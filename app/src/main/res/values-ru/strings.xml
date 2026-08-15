@@ -1,0 +1,91 @@
+<resources>
+    <string name="app_name">ResortControl</string>
+    <string name="header_title">База отдыха</string>
+    <string name="header_subtitle">Админ — Управление имуществом</string>
+    <string name="search_placeholder">Поиск объектов&#8230;</string>
+    <string name="filters_button">Фильтры</string>
+    <string name="property_count">%1$d из %2$d объектов</string>
+    <string name="per_night">/ночь</string>
+    <string name="guests_suffix">гостей</string>
+    <string name="bed_suffix">кровать</string>
+    <string name="bath_suffix">ванная</string>
+    <string name="reservations_suffix">бронирований</string>
+    <string name="total_suffix">всего</string>
+    <string name="status_unavailable">Занят</string>
+    <string name="status_available">Свободен</string>
+    <string name="status_available_until">Свободен до %1$s</string>
+    <string name="status_unavailable_until">Занят до %1$s</string>
+    <string name="add_property">Добавить объект</string>
+    <string name="rooms_suffix">комнат</string>
+    <string name="sleeping_spaces_suffix">спальных мест</string>
+    <string name="toilet_label">Туалет</string>
+    <string name="shower_label">Душ</string>
+
+    <!-- Navigation -->
+    <string name="nav_properties">Объекты</string>
+    <string name="nav_bookings">Бронирования</string>
+    <string name="nav_settings">Настройки</string>
+    <string name="language_section">Язык</string>
+    <string name="lang_english">English</string>
+    <string name="lang_russian">Русский</string>
+    <string name="content_desc_menu">Открыть меню</string>
+
+    <!-- Dialogs General -->
+    <string name="add_button">Добавить</string>
+    <string name="cancel_button">Отмена</string>
+    <string name="save_button">Сохранить</string>
+    <string name="close_button">Закрыть</string>
+    <string name="apply_button">Применить</string>
+    <string name="reset_button">Сбросить</string>
+
+    <!-- Add Cabin -->
+    <string name="add_cabin_title">Новый домик</string>
+    <string name="cabin_name_label">Название / Номер</string>
+    <string name="price_per_day_label">Цена за сутки</string>
+    <string name="rooms_count_label">Количество комнат</string>
+    <string name="beds_count_label">Спальные места</string>
+    <string name="has_shower_label">Наличие душа</string>
+    <string name="has_toilet_label">Наличие туалета</string>
+    <string name="no_number">Б/Н</string>
+
+    <!-- Filters -->
+    <string name="filters_title">Фильтры</string>
+    <string name="max_price_label">Макс. цена</string>
+    <string name="min_rooms_label">Мин. комнат</string>
+    <string name="min_beds_label">Мин. мест</string>
+    <string name="req_shower_label">Обязательно душ</string>
+    <string name="req_toilet_label">Обязательно туалет</string>
+    <string name="filter_dates_label">Проверить доступность</string>
+    <string name="select_dates_title">Выберите даты</string>
+    <string name="all_dates_label">Любые даты</string>
+    <string name="clear_button">Очистить</string>
+
+    <!-- Cabin Detail -->
+    <string name="cabin_prefix">Домик</string>
+    <string name="edit_name_desc">Изменить название</string>
+    <string name="price_label">Цена:</string>
+    <string name="per_day">/ сутки</string>
+    <string name="edit_price_desc">Изменить цену</string>
+    <string name="photo_desc">Фото</string>
+    <string name="add_photo_desc">Добавить фото</string>
+    <string name="edit_features_desc">Редактировать характеристики</string>
+    <string name="admin_note_label">Заметка администратора</string>
+    <string name="edit_name_title">Название домика</string>
+    <string name="edit_name_hint">Введите название/номер</string>
+    <string name="edit_features_title">Характеристики домика</string>
+
+    <!-- Booking Calendar -->
+    <string name="calendar_title">Календарь</string>
+    <string name="add_booking_desc">Добавить бронь</string>
+    <string name="prev_month">&lt; Пред</string>
+    <string name="next_month">След &gt;</string>
+    <string name="new_booking_title">Новая бронь</string>
+    <string name="booking_note_label">Заметка (кто приезжает?)</string>
+    <string name="dates_busy_error">Эти даты уже заняты! Выберите другие.</string>
+    <string name="day_bookings_title">Бронирования на этот день</string>
+    <string name="check_in_label">Заезд:</string>
+    <string name="check_out_label">Выезд:</string>
+    <string name="note_label">Заметка</string>
+    <string name="delete_booking_button">Удалить бронь</string>
+
+</resources>

@@ -21,6 +21,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import androidx.appcompat.app.AppCompatDelegate
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -62,8 +64,8 @@ fun BookingTimelineVisualizer(cabin: Cabin) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Календарь", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            IconButton(onClick = { showDialog = true }) { Icon(imageVector = Icons.Default.Add, contentDescription = "Добавить бронь") }
+            Text(stringResource(R.string.calendar_title), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            IconButton(onClick = { showDialog = true }) { Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(R.string.add_booking_desc)) }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -73,18 +75,23 @@ fun BookingTimelineVisualizer(cabin: Cabin) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = { currentMonth = currentMonth.minusMonths(1) }) { Text(text = "< Пред") }
-            val monthName = currentMonth.month.getDisplayName(TextStyle.FULL_STANDALONE, Locale.forLanguageTag("ru"))
+            TextButton(onClick = { currentMonth = currentMonth.minusMonths(1) }) { Text(text = stringResource(R.string.prev_month)) }
+            val appLocale = AppCompatDelegate.getApplicationLocales().get(0) ?: Locale.getDefault()
+            val monthName = currentMonth.month.getDisplayName(TextStyle.FULL_STANDALONE, appLocale)
             Text(
-                text = "${monthName.replaceFirstChar { it.uppercase() }} ${currentMonth.year}",
+                text = "${monthName.replaceFirstChar { it.uppercase(appLocale) }} ${currentMonth.year}",
                 fontSize = 18.sp, fontWeight = FontWeight.SemiBold
             )
-            TextButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) { Text(text = "След >") }
+            TextButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) { Text(text = stringResource(R.string.next_month)) }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        val daysOfWeek = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
+        val daysOfWeek = if (AppCompatDelegate.getApplicationLocales().get(0)?.language == "ru") {
+            listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
+        } else {
+            listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+        }
         Row(modifier = Modifier.fillMaxWidth()) {
             daysOfWeek.forEach { day ->
                 Text(text = day, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold, color = Color.Gray)
@@ -119,18 +126,19 @@ fun BookingTimelineVisualizer(cabin: Cabin) {
         if (showDialog) {
             val dateRangePickerState = rememberDateRangePickerState()
             var errorMessage by remember { mutableStateOf<String?>(null) }
-            val configuration = Configuration(LocalConfiguration.current).apply { setLocale(Locale("ru")) }
+            val appLocale = AppCompatDelegate.getApplicationLocales().get(0) ?: Locale.getDefault()
+            val configuration = Configuration(LocalConfiguration.current).apply { setLocale(appLocale) }
 
             CompositionLocalProvider(LocalConfiguration provides configuration) {
                 AlertDialog(
                     onDismissRequest = { showDialog = false },
                     modifier = Modifier.fillMaxHeight(0.8f),
-                    title = { Text("Новая бронь") },
+                    title = { Text(stringResource(R.string.new_booking_title)) },
                     text = {
                         Column {
                             OutlinedTextField(
                                 value = newBookingNote, onValueChange = { newBookingNote = it },
-                                label = { Text("Заметка (кто приезжает?)") }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                                label = { Text(stringResource(R.string.booking_note_label)) }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                             )
                             if (errorMessage != null) {
                                 Text(text = errorMessage!!, color = Color.Red, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
@@ -139,6 +147,7 @@ fun BookingTimelineVisualizer(cabin: Cabin) {
                         }
                     },
                     confirmButton = {
+                        val busyError = stringResource(R.string.dates_busy_error)
                         TextButton(
                             onClick = {
                                 val startMillis = dateRangePickerState.selectedStartDateMillis
@@ -149,7 +158,7 @@ fun BookingTimelineVisualizer(cabin: Cabin) {
 
                                     val hasOverlap = bookings.any { startDate.isBefore(it.endDate) && endDate.isAfter(it.startDate) }
                                     if (hasOverlap) {
-                                        errorMessage = "Эти даты уже заняты! Выберите другие."
+                                        errorMessage = busyError
                                     } else {
                                         errorMessage = null
                                         val colors = listOf(Color(0xFF42A5F5), Color(0xFFFFA726), Color(0xFF66BB6A), Color(0xFFAB47BC))
@@ -180,9 +189,9 @@ fun BookingTimelineVisualizer(cabin: Cabin) {
                                 }
                             },
                             enabled = dateRangePickerState.selectedStartDateMillis != null && dateRangePickerState.selectedEndDateMillis != null
-                        ) { Text("Добавить") }
+                        ) { Text(stringResource(R.string.add_button)) }
                     },
-                    dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Отмена") } }
+                    dismissButton = { TextButton(onClick = { showDialog = false }) { Text(stringResource(R.string.cancel_button)) } }
                 )
             }
         }
@@ -191,13 +200,13 @@ fun BookingTimelineVisualizer(cabin: Cabin) {
             val bookingsToShow = listOfNotNull(selectedDayInfo?.firstBooking, selectedDayInfo?.secondBooking)
             AlertDialog(
                 onDismissRequest = { selectedDayInfo = null },
-                title = { Text("Бронирования на этот день") },
+                title = { Text(stringResource(R.string.day_bookings_title)) },
                 text = {
                     Column {
                         bookingsToShow.forEach { booking ->
                             var editedNote by remember(booking) { mutableStateOf(booking.note) }
                             Column(modifier = Modifier.padding(bottom = 16.dp)) {
-                                Text("Заезд: ${booking.startDate}  |  Выезд: ${booking.endDate}", fontWeight = FontWeight.SemiBold)
+                                Text("${stringResource(R.string.check_in_label)} ${booking.startDate}  |  ${stringResource(R.string.check_out_label)} ${booking.endDate}", fontWeight = FontWeight.SemiBold)
                                 OutlinedTextField(
                                     value = editedNote,
                                     onValueChange = { newValue ->
@@ -205,17 +214,17 @@ fun BookingTimelineVisualizer(cabin: Cabin) {
                                         val index = bookings.indexOfFirst { it.id == booking.id }
                                         if (index != -1) bookings[index] = bookings[index].copy(note = newValue)
                                     },
-                                    label = { Text("Заметка") }, modifier = Modifier.fillMaxWidth()
+                                    label = { Text(stringResource(R.string.note_label)) }, modifier = Modifier.fillMaxWidth()
                                 )
                                 TextButton(
                                     onClick = { bookings.removeAll { it.id == booking.id }; selectedDayInfo = null },
                                     modifier = Modifier.align(Alignment.End)
-                                ) { Text("Удалить бронь", color = Color.Red) }
+                                ) { Text(stringResource(R.string.delete_booking_button), color = Color.Red) }
                             }
                         }
                     }
                 },
-                confirmButton = { TextButton(onClick = { selectedDayInfo = null }) { Text("Закрыть") } }
+                confirmButton = { TextButton(onClick = { selectedDayInfo = null }) { Text(stringResource(R.string.close_button)) } }
             )
         }
     }

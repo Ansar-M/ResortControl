@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.res.stringResource
 import coil.compose.AsyncImage
 
 @Composable
@@ -58,9 +59,9 @@ fun CabinDetailScreen(cabin: Cabin) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = "Домик ${currentCabin.number}", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text(text = "${stringResource(R.string.cabin_prefix)} ${currentCabin.number}", fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 IconButton(onClick = { showEditNameDialog = true }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Изменить название", tint = Color.Gray)
+                    Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_name_desc), tint = Color.Gray)
                 }
             }
 
@@ -74,7 +75,7 @@ fun CabinDetailScreen(cabin: Cabin) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Цена: ${currentCabin.price} ${currentCabin.currency} / сутки",
+                    text = "${stringResource(R.string.price_label)} ${currentCabin.price} ${currentCabin.currency} ${stringResource(R.string.per_day)}",
                     fontSize = 18.sp,
                     color = Color(0xFF388E3C),
                     fontWeight = FontWeight.SemiBold
@@ -82,7 +83,7 @@ fun CabinDetailScreen(cabin: Cabin) {
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
                     Icons.Default.Edit,
-                    contentDescription = "Изменить цену",
+                    contentDescription = stringResource(R.string.edit_price_desc),
                     modifier = Modifier.size(16.dp),
                     tint = Color.Gray
                 )
@@ -100,7 +101,7 @@ fun CabinDetailScreen(cabin: Cabin) {
                         modifier = Modifier.size(width = 280.dp, height = 180.dp).clip(RoundedCornerShape(12.dp)).background(Color.LightGray)
                     ) {
                         AsyncImage(
-                            model = currentPhoto, contentDescription = "Фото", contentScale = ContentScale.Crop,
+                            model = currentPhoto, contentDescription = stringResource(R.string.photo_desc), contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize().clickable { selectedPhotoForView = currentPhoto }
                         )
                         IconButton(
@@ -113,7 +114,7 @@ fun CabinDetailScreen(cabin: Cabin) {
                         modifier = Modifier.size(width = 280.dp, height = 180.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFE0E0E0))
                             .clickable { photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         contentAlignment = Alignment.Center
-                    ) { Icon(imageVector = Icons.Default.Add, contentDescription = "Добавить фото", modifier = Modifier.size(48.dp), tint = Color.Gray) }
+                    ) { Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(R.string.add_photo_desc), modifier = Modifier.size(48.dp), tint = Color.Gray) }
                 }
             }
         }
@@ -129,13 +130,13 @@ fun CabinDetailScreen(cabin: Cabin) {
                 modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                FeatureChip(text = "🚪 ${currentCabin.roomsCount}")
-                FeatureChip(text = "🛏 ${currentCabin.bedsCount}")
-                if (currentCabin.hasShower) FeatureChip(text = "🚿")
-                if (currentCabin.hasToilet) FeatureChip(text = "🚽")
+                CabinFeatureChip(text = "🚪${currentCabin.roomsCount}")
+                CabinFeatureChip(text = "🛏${currentCabin.bedsCount}")
+                if (currentCabin.hasShower) CabinFeatureChip(text = "🚿")
+                if (currentCabin.hasToilet) CabinFeatureChip(text = "🚽")
             }
             IconButton(onClick = { showEditFeaturesDialog = true }) {
-                Icon(Icons.Default.Edit, contentDescription = "Редактировать характеристики", tint = Color.Gray)
+                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_features_desc), tint = Color.Gray)
             }
         }
 
@@ -146,7 +147,7 @@ fun CabinDetailScreen(cabin: Cabin) {
             onValueChange = { newComment ->
                 currentCabin = currentCabin.copy(comment = newComment)
             },
-            label = { Text("Заметка администратора") },
+            label = { Text(stringResource(R.string.admin_note_label)) },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
         )
 
@@ -159,20 +160,20 @@ fun CabinDetailScreen(cabin: Cabin) {
     if (showEditNameDialog) {
         var nameInput by remember { mutableStateOf(currentCabin.number) }
         AlertDialog(
-            onDismissRequest = { showEditNameDialog = false }, title = { Text("Название домика") },
+            onDismissRequest = { showEditNameDialog = false }, title = { Text(stringResource(R.string.edit_name_title)) },
             text = {
                 OutlinedTextField(
                     value = nameInput, onValueChange = { nameInput = it },
-                    label = { Text("Введите название/номер") }, modifier = Modifier.fillMaxWidth(), singleLine = true
+                    label = { Text(stringResource(R.string.edit_name_hint)) }, modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
                     currentCabin = currentCabin.copy(number = nameInput)
                     showEditNameDialog = false
-                }) { Text("Сохранить") }
+                }) { Text(stringResource(R.string.save_button)) }
             },
-            dismissButton = { TextButton(onClick = { showEditNameDialog = false }) { Text("Отмена") } }
+            dismissButton = { TextButton(onClick = { showEditNameDialog = false }) { Text(stringResource(R.string.cancel_button)) } }
         )
     }
 
@@ -185,13 +186,13 @@ fun CabinDetailScreen(cabin: Cabin) {
 
         AlertDialog(
             onDismissRequest = { showEditPriceDialog = false },
-            title = { Text("Изменить цену") },
+            title = { Text(stringResource(R.string.edit_price_desc)) },
             text = {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = priceInput,
                         onValueChange = { priceInput = it },
-                        label = { Text("Цена за сутки") },
+                        label = { Text(stringResource(R.string.price_per_day_label)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f).padding(end = 8.dp),
                         singleLine = true
@@ -218,9 +219,9 @@ fun CabinDetailScreen(cabin: Cabin) {
                         currency = currencyInput
                     )
                     showEditPriceDialog = false
-                }) { Text("Сохранить") }
+                }) { Text(stringResource(R.string.save_button)) }
             },
-            dismissButton = { TextButton(onClick = { showEditPriceDialog = false }) { Text("Отмена") } }
+            dismissButton = { TextButton(onClick = { showEditPriceDialog = false }) { Text(stringResource(R.string.cancel_button)) } }
         )
     }
 
@@ -232,21 +233,21 @@ fun CabinDetailScreen(cabin: Cabin) {
         var hasToiletInput by remember { mutableStateOf(currentCabin.hasToilet) }
 
         AlertDialog(
-            onDismissRequest = { showEditFeaturesDialog = false }, title = { Text("Характеристики домика") },
+            onDismissRequest = { showEditFeaturesDialog = false }, title = { Text(stringResource(R.string.edit_features_title)) },
             text = {
                 Column {
                     OutlinedTextField(
                         value = roomsInput, onValueChange = { roomsInput = it },
-                        label = { Text("Количество комнат") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        label = { Text(stringResource(R.string.rooms_count_label)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     )
                     OutlinedTextField(
                         value = bedsInput, onValueChange = { bedsInput = it },
-                        label = { Text("Спальные места") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        label = { Text(stringResource(R.string.beds_count_label)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = hasShowerInput, onCheckedChange = { hasShowerInput = it }); Text("Наличие душа") }
-                    Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = hasToiletInput, onCheckedChange = { hasToiletInput = it }); Text("Наличие туалета") }
+                    Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = hasShowerInput, onCheckedChange = { hasShowerInput = it }); Text(stringResource(R.string.has_shower_label)) }
+                    Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = hasToiletInput, onCheckedChange = { hasToiletInput = it }); Text(stringResource(R.string.has_toilet_label)) }
                 }
             },
             confirmButton = {
@@ -258,9 +259,9 @@ fun CabinDetailScreen(cabin: Cabin) {
                         hasToilet = hasToiletInput
                     )
                     showEditFeaturesDialog = false
-                }) { Text("Сохранить") }
+                }) { Text(stringResource(R.string.save_button)) }
             },
-            dismissButton = { TextButton(onClick = { showEditFeaturesDialog = false }) { Text("Отмена") } }
+            dismissButton = { TextButton(onClick = { showEditFeaturesDialog = false }) { Text(stringResource(R.string.cancel_button)) } }
         )
     }
 
@@ -282,15 +283,9 @@ fun CabinDetailScreen(cabin: Cabin) {
                 )
                 IconButton(
                     onClick = { selectedPhotoForView = null }, modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50))
-                ) { Icon(Icons.Default.Close, contentDescription = "Закрыть", tint = Color.White) }
+                ) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close_button), tint = Color.White) }
             }
         }
     }
 }
 
-@Composable
-fun FeatureChip(text: String) {
-    Box(
-        modifier = Modifier.background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp)).padding(horizontal = 12.dp, vertical = 6.dp)
-    ) { Text(text = text, fontSize = 14.sp) }
-}

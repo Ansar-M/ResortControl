@@ -1,0 +1,6 @@
+- [x] Add availability strings to `strings.xml`
+- [x] Add availability strings to `values-ru/strings.xml`
+- [x] Implement date filtering state and logic in `CabinListScreen.kt`
+- [x] Add date picker trigger to Filter dialog
+- [x] Implement `DateRangePicker` dialog in `CabinListScreen.kt`
+- [x] Verify filtering functionality

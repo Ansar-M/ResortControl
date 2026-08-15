@@ -1,3 +1,91 @@
 <resources>
     <string name="app_name">ResortControl</string>
+    <string name="header_title">Recreation Center</string>
+    <string name="header_subtitle">Admin — Property Management</string>
+    <string name="search_placeholder">Search properties&#8230;</string>
+    <string name="filters_button">Filters</string>
+    <string name="property_count">%1$d of %2$d properties</string>
+    <string name="per_night">/night</string>
+    <string name="guests_suffix">guests</string>
+    <string name="bed_suffix">bed</string>
+    <string name="bath_suffix">bath</string>
+    <string name="reservations_suffix">reservations</string>
+    <string name="total_suffix">total</string>
+    <string name="status_unavailable">Unavailable</string>
+    <string name="status_available">Available</string>
+    <string name="status_available_until">Available until %1$s</string>
+    <string name="status_unavailable_until">Unavailable until %1$s</string>
+    <string name="add_property">Add Property</string>
+    <string name="rooms_suffix">rooms</string>
+    <string name="sleeping_spaces_suffix">sleeping spaces</string>
+    <string name="toilet_label">Toilet</string>
+    <string name="shower_label">Shower</string>
+
+    <!-- Navigation -->
+    <string name="nav_properties">Properties</string>
+    <string name="nav_bookings">Bookings</string>
+    <string name="nav_settings">Settings</string>
+    <string name="language_section">Language</string>
+    <string name="lang_english">English</string>
+    <string name="lang_russian">Russian</string>
+    <string name="content_desc_menu">Open menu</string>
+
+    <!-- Dialogs General -->
+    <string name="add_button">Add</string>
+    <string name="cancel_button">Cancel</string>
+    <string name="save_button">Save</string>
+    <string name="close_button">Close</string>
+    <string name="apply_button">Apply</string>
+    <string name="reset_button">Reset</string>
+
+    <!-- Add Cabin -->
+    <string name="add_cabin_title">New Cabin</string>
+    <string name="cabin_name_label">Name / Number</string>
+    <string name="price_per_day_label">Price per day</string>
+    <string name="rooms_count_label">Number of rooms</string>
+    <string name="beds_count_label">Sleeping spaces</string>
+    <string name="has_shower_label">Shower available</string>
+    <string name="has_toilet_label">Toilet available</string>
+    <string name="no_number">N/A</string>
+
+    <!-- Filters -->
+    <string name="filters_title">Filters</string>
+    <string name="max_price_label">Max price</string>
+    <string name="min_rooms_label">Min rooms</string>
+    <string name="min_beds_label">Min spaces</string>
+    <string name="req_shower_label">Shower required</string>
+    <string name="req_toilet_label">Toilet required</string>
+    <string name="filter_dates_label">Check availability</string>
+    <string name="select_dates_title">Select Dates</string>
+    <string name="all_dates_label">All dates</string>
+    <string name="clear_button">Clear</string>
+
+    <!-- Cabin Detail -->
+    <string name="cabin_prefix">Cabin</string>
+    <string name="edit_name_desc">Edit name</string>
+    <string name="price_label">Price:</string>
+    <string name="per_day">/ day</string>
+    <string name="edit_price_desc">Edit price</string>
+    <string name="photo_desc">Photo</string>
+    <string name="add_photo_desc">Add photo</string>
+    <string name="edit_features_desc">Edit features</string>
+    <string name="admin_note_label">Admin note</string>
+    <string name="edit_name_title">Cabin Name</string>
+    <string name="edit_name_hint">Enter name/number</string>
+    <string name="edit_features_title">Cabin Features</string>
+
+    <!-- Booking Calendar -->
+    <string name="calendar_title">Calendar</string>
+    <string name="add_booking_desc">Add booking</string>
+    <string name="prev_month">&lt; Prev</string>
+    <string name="next_month">Next &gt;</string>
+    <string name="new_booking_title">New Booking</string>
+    <string name="booking_note_label">Note (who is coming?)</string>
+    <string name="dates_busy_error">These dates are already busy! Choose others.</string>
+    <string name="day_bookings_title">Bookings for this day</string>
+    <string name="check_in_label">Check-in:</string>
+    <string name="check_out_label">Check-out:</string>
+    <string name="note_label">Note</string>
+    <string name="delete_booking_button">Delete booking</string>
+
 </resources>

@@ -1,8 +1,11 @@
 package com.example.resortcontrol
 
+import androidx.compose.ui.res.stringResource
+import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.example.resortcontrol.ui.theme.ResortControlTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -19,11 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
+            ResortControlTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
 
                     val cabins = remember {
@@ -34,26 +37,30 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    var selectedCabin by remember { mutableStateOf<Cabin?>(null) }
+                    var selectedCabinId by rememberSaveable { mutableStateOf<String?>(null) }
+                    val selectedCabin = cabins.find { it.id == selectedCabinId }
 
-                    if (selectedCabin == null) {
+                    if (selectedCabinId == null || selectedCabin == null) {
                         CabinListScreen(
                             cabins = cabins,
                             onCabinClick = { clickedCabin ->
-                                selectedCabin = clickedCabin
+                                selectedCabinId = clickedCabin.id
+                            },
+                            // НОВОЕ: Обработчик добавления нового домика
+                            onAddCabin = { newCabin ->
+                                cabins.add(newCabin)
                             }
                         )
                     } else {
                         Column {
                             TextButton(
-                                onClick = { selectedCabin = null },
+                                onClick = { selectedCabinId = null },
                                 modifier = Modifier.padding(start = 8.dp, top = 8.dp)
                             ) {
-                                Text("< Назад к списку", fontSize = 16.sp)
+                                Text("< ${stringResource(R.string.cancel_button)}", fontSize = 16.sp)
                             }
 
-                            // Вызов без лишних параметров
-                            CabinDetailScreen(cabin = selectedCabin!!)
+                            CabinDetailScreen(cabin = selectedCabin)
                         }
                     }
                 }
