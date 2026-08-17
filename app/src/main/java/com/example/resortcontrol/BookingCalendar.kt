@@ -51,12 +51,16 @@ fun getDayInfo(currentDate: LocalDate, bookings: List<Booking>): DayInfo {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BookingTimelineVisualizer(cabin: Cabin) {
+fun BookingTimelineVisualizer(
+    cabin: Cabin,
+    onAddBooking: (Booking) -> Unit = {},
+    onDeleteBooking: (Booking) -> Unit = {}
+) {
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var showDialog by remember { mutableStateOf(false) }
     var newBookingNote by remember { mutableStateOf("") }
     var selectedDayInfo by remember { mutableStateOf<DayInfo?>(null) }
-    val bookings = remember { mutableStateListOf<Booking>() }
+    val bookings = cabin.bookings
 
     Column(modifier = Modifier.padding(16.dp)) {
         Row(
@@ -174,15 +178,15 @@ fun BookingTimelineVisualizer(cabin: Cabin) {
 // Выбираем безопасный цвет (если безопасных вдруг нет, берем любой)
                                         val finalColor = if (safeColors.isNotEmpty()) safeColors.random() else colors.random()
 
-                                        bookings.add(
-                                            Booking(
-                                                id = "b_${System.currentTimeMillis()}",
-                                                startDate = startDate,
-                                                endDate = endDate,
-                                                note = newBookingNote,
-                                                color = finalColor
-                                            )
+                                        val newBooking = Booking(
+                                            id = "b_${System.currentTimeMillis()}",
+                                            startDate = startDate,
+                                            endDate = endDate,
+                                            note = newBookingNote,
+                                            color = finalColor
                                         )
+                                        bookings.add(newBooking)
+                                        onAddBooking(newBooking)
                                         newBookingNote = ""
                                         showDialog = false
                                     }
@@ -217,7 +221,11 @@ fun BookingTimelineVisualizer(cabin: Cabin) {
                                     label = { Text(stringResource(R.string.note_label)) }, modifier = Modifier.fillMaxWidth()
                                 )
                                 TextButton(
-                                    onClick = { bookings.removeAll { it.id == booking.id }; selectedDayInfo = null },
+                                    onClick = { 
+                                        onDeleteBooking(booking)
+                                        bookings.removeAll { it.id == booking.id }
+                                        selectedDayInfo = null 
+                                    },
                                     modifier = Modifier.align(Alignment.End)
                                 ) { Text(stringResource(R.string.delete_booking_button), color = Color.Red) }
                             }

@@ -88,4 +88,18 @@
     <string name="note_label">Note</string>
     <string name="delete_booking_button">Delete booking</string>
 
+    <!-- Account & Centers -->
+    <string name="sign_in_google">Sign in with Google</string>
+    <string name="switch_account">Switch account</string>
+    <string name="sign_out">Sign out</string>
+    <string name="my_centers">My Recreation Centers</string>
+    <string name="create_new_center">Create New Center</string>
+    <string name="edit_center_name">Edit Center Name</string>
+    <string name="center_name_hint">Enter recreation center name</string>
+    <string name="active_label">Active</string>
+    <string name="section_general">General Information</string>
+    <string name="section_capacity">Capacity Requirements</string>
+    <string name="section_amenities">Amenities</string>
+    <string name="section_price">Price Range</string>
+
 </resources>

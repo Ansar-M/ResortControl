@@ -1,52 +1,52 @@
-# Implementation Plan - Add Date Availability Filter
+# Implementation Plan - Offline-First Sync with Google (Firebase)
 
-This plan describes how to add a date range availability filter to the `CabinListScreen`, allowing users to find properties that are free during specific dates.
+This plan details the integration of Firebase Firestore and Authentication to provide a robust offline-first experience. Data will be saved locally in Room and automatically synced to the cloud when an internet connection is available.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - The date range selection will use the same `DateRangePicker` component as the reservation creation screen to ensure a consistent "mini window" experience with both text input and calendar selection.
-> - When a date filter is active, only cabins with NO overlapping bookings during that period will be shown.
+> - **Firebase Setup**: You MUST create a project in the [Firebase Console](https://console.firebase.google.com/), add an Android app with package `com.example.resortcontrol`, and place the `google-services.json` file in your `app/` folder.
+> - **Google Auth**: I will implement the **Credential Manager API** for a modern "One Tap" sign-in experience.
+> - **Data Privacy**: Each user will have their own "private" data partition in Firestore based on their Google UID.
 
 ## Proposed Changes
 
-### Resources
+### 1. Build & Dependencies
+- **[MODIFY] [libs.versions.toml](file:///C:/Users/ocloc/AndroidStudioProjects/ResortControl2/gradle/libs.versions.toml)**:
+    - Add Firebase BOM, Firestore, Auth, and Google Services plugin.
+    - Add Credential Manager libraries.
+- **[MODIFY] [build.gradle.kts (project)](file:///C:/Users/ocloc/AndroidStudioProjects/ResortControl2/build.gradle.kts)**: Apply Google Services plugin.
+- **[MODIFY] [build.gradle.kts (app)](file:///C:/Users/ocloc/AndroidStudioProjects/ResortControl2/app/build.gradle.kts)**: Add dependencies and apply the plugin.
 
-#### [MODIFY] [strings.xml](file:///C:/Users/ocloc/AndroidStudioProjects/ResortControl2/app/src/main/res/values/strings.xml)
-- Add `filter_dates_label`: "Check availability"
-- Add `select_dates_title`: "Select Dates"
-- Add `all_dates_label`: "All dates"
+### 2. Authentication Layer
+- **[NEW] `AuthManager`**:
+    - Uses `CredentialManager` to handle Google Sign-In.
+    - Exchanges Google ID Tokens for Firebase Auth credentials.
+    - Provides a `StateFlow<UserAccount?>` for the UI.
 
-#### [MODIFY] [strings.xml (ru)](file:///C:/Users/ocloc/AndroidStudioProjects/ResortControl2/app/src/main/res/values-ru/strings.xml)
-- Add `filter_dates_label`: "Проверить доступность"
-- Add `select_dates_title`: "Выберите даты"
-- Add `all_dates_label`: "Любые даты"
+### 3. Data Synchronization Layer
+- **[MODIFY] [Database.kt](file:///C:/Users/ocloc/AndroidStudioProjects/ResortControl2/app/src/main/java/com/example/resortcontrol/Database.kt)**:
+    - Add a `lastModified: Long` field and `isSynced: Boolean` to `CabinEntity` and `BookingEntity`.
+- **[NEW] `SyncRepository`**:
+    - Observes Room changes and pushes "un-synced" items to Firestore.
+    - Listens to Firestore snapshots and updates Room with remote changes (Conflict resolution: Latest timestamp wins).
+- **[NEW] `SyncWorker` (WorkManager)**:
+    - Scheduled to run when the device is online to ensure all local changes are eventually pushed to the cloud.
 
-### UI Components
-
-#### [MODIFY] [CabinListScreen.kt](file:///C:/Users/ocloc/AndroidStudioProjects/ResortControl2/app/src/main/java/com/example/resortcontrol/CabinListScreen.kt)
-- **New State**:
-    - `filterStartDate` and `filterEndDate` (using `rememberSaveable`) to store the selected range.
-    - `showDatePicker` state to control the visibility of the calendar dialog.
-- **Filtering Logic**:
-    - Update `filteredCabins` to check for date overlaps. If dates are selected, a cabin is included only if `cabin.bookings` contains NO bookings where `(selectedStart < bookingEnd) AND (selectedEnd > bookingStart)`.
-- **Filter Dialog Update**:
-    - Add a row or button titled "Check availability" (localized).
-    - Display the selected dates or "All dates" if none are selected.
-    - Clicking this will open a secondary `AlertDialog` containing the `DateRangePicker`.
-- **Date Picker Dialog**:
-    - Implement a `DateRangePicker` dialog similar to the one in `BookingCalendar.kt`.
-    - Include a "Clear" or "Reset" option within this picker to remove the date filter.
+### 4. UI Integration
+- **[MODIFY] [MainActivity.kt](file:///C:/Users/ocloc/AndroidStudioProjects/ResortControl2/app/src/main/java/com/example/resortcontrol/MainActivity.kt)**:
+    - Initialize Firebase.
+    - Show a Sign-In screen if no user is authenticated.
+    - Provide a "Syncing..." status indicator in the top bar.
 
 ## Verification Plan
 
+### Automated Verification
+- **Build Check**: Verify successful compilation with new dependencies.
+- **Sync Logic**: Unit test the mapper functions and timestamp-based conflict resolution.
+
 ### Manual Verification
-- **Functional Testing**:
-    - Open Filters, click "Check availability".
-    - Select a date range where you know some cabins are booked.
-    - Verify that booked cabins disappear from the list.
-    - Change dates and verify the list updates correctly.
-    - Reset the date filter and verify all cabins return.
-- **UI/UX Consistency**:
-    - Verify the calendar matches the reservation calendar's look and feel.
-    - Verify localization in both English and Russian.
+- **Sign In**: Verify successful login via Google account.
+- **Offline Entry**: Add a cabin while in Airplane Mode, verify it's saved locally.
+- **Auto-Sync**: Disable Airplane Mode, verify the cabin appears in the Firebase Console.
+- **Cloud Restoration**: Uninstall the app, reinstall, sign in, and verify all data is restored.

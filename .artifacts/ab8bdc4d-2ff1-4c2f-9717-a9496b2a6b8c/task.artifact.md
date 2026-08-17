@@ -1,6 +1,6 @@
-- [x] Add availability strings to `strings.xml`
-- [x] Add availability strings to `values-ru/strings.xml`
-- [x] Implement date filtering state and logic in `CabinListScreen.kt`
-- [x] Add date picker trigger to Filter dialog
-- [x] Implement `DateRangePicker` dialog in `CabinListScreen.kt`
-- [x] Verify filtering functionality
+- [x] Update `MainActivity.kt` with User and Center state
+- [x] Redesign Side Menu (Drawer) in `CabinListScreen.kt`
+- [x] Transition Filter system to `ModalBottomSheet` in `CabinListScreen.kt`
+- [x] Redesign "Add Cabin" dialog in `CabinListScreen.kt`
+- [x] Improve `CabinDetailScreen.kt` layout and feature visualization
+- [x] Verify build and functionality

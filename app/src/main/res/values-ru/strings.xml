@@ -88,4 +88,18 @@
     <string name="note_label">Заметка</string>
     <string name="delete_booking_button">Удалить бронь</string>
 
+    <!-- Account & Centers -->
+    <string name="sign_in_google">Войти через Google</string>
+    <string name="switch_account">Сменить аккаунт</string>
+    <string name="sign_out">Выйти</string>
+    <string name="my_centers">Мои базы отдыха</string>
+    <string name="create_new_center">Создать новую базу</string>
+    <string name="edit_center_name">Изменить название базы</string>
+    <string name="center_name_hint">Введите название базы отдыха</string>
+    <string name="active_label">Активно</string>
+    <string name="section_general">Общая информация</string>
+    <string name="section_capacity">Требования к вместимости</string>
+    <string name="section_amenities">Удобства</string>
+    <string name="section_price">Ценовой диапазон</string>
+
 </resources>

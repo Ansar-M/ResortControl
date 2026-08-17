@@ -56,6 +56,11 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun CabinListScreen(
     cabins: List<Cabin>,
+    user: UserAccount,
+    centers: List<Center>,
+    activeCenter: String,
+    onCenterSelect: (Center) -> Unit,
+    onAddCenter: (String) -> Unit,
     onCabinClick: (Cabin) -> Unit,
     onAddCabin: (Cabin) -> Unit
 ) {
@@ -66,15 +71,17 @@ fun CabinListScreen(
     var showFilterDialog by rememberSaveable { mutableStateOf(false) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
 
+    // Filter states
     var minRoomsInput by rememberSaveable { mutableStateOf("") }
     var minBedsInput by rememberSaveable { mutableStateOf("") }
     var maxPriceInput by rememberSaveable { mutableStateOf("") }
     var reqShower by rememberSaveable { mutableStateOf(false) }
     var reqToilet by rememberSaveable { mutableStateOf(false) }
-
     var filterStartEpoch by rememberSaveable { mutableStateOf<Long?>(null) }
     var filterEndEpoch by rememberSaveable { mutableStateOf<Long?>(null) }
+
     var showDatePicker by remember { mutableStateOf(false) }
+    var showAddCenterDialog by remember { mutableStateOf(false) }
 
     val filteredCabins = cabins.filter { cabin ->
         val matchName = stringResource(R.string.cabin_prefix).let { prefix -> "$prefix ${cabin.number}" }.contains(searchQuery, ignoreCase = true) ||
@@ -111,36 +118,97 @@ fun CabinListScreen(
                 drawerContainerColor = Color.White,
                 drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
             ) {
-                Spacer(Modifier.height(24.dp))
-                Text(
-                    text = stringResource(R.string.header_title),
-                    modifier = Modifier.padding(16.dp),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1B4332)
-                )
-                HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = Color(0xFFF1F1F1))
+                // PROFILE HEADER
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF1B4332))
+                        .padding(24.dp)
+                ) {
+                    Column {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                user.name.take(1).uppercase(),
+                                color = Color.White,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Text(user.name, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text(user.email, color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp)
+                    }
+                }
+
                 Spacer(Modifier.height(16.dp))
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.nav_properties)) },
-                    selected = true,
-                    onClick = { scope.launch { drawerState.close() } },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+
+                // NAVIGATION ITEMS
+                Text(
+                    text = stringResource(R.string.my_centers),
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Gray
                 )
+
+                centers.forEach { center ->
+                    NavigationDrawerItem(
+                        label = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(center.name)
+                                if (center.isActive) {
+                                    Spacer(Modifier.width(8.dp))
+                                    Surface(
+                                        color = Color(0xFF1B4332).copy(alpha = 0.1f),
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            stringResource(R.string.active_label),
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            fontSize = 10.sp,
+                                            color = Color(0xFF1B4332),
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        selected = center.isActive,
+                        onClick = { 
+                            onCenterSelect(center)
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                        colors = NavigationDrawerItemDefaults.colors(
+                            selectedContainerColor = Color(0xFFF1F0EA),
+                            selectedTextColor = Color(0xFF1B4332)
+                        )
+                    )
+                }
+
                 NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.nav_bookings)) },
+                    label = { Text("+ " + stringResource(R.string.create_new_center)) },
                     selected = false,
-                    onClick = { scope.launch { drawerState.close() } },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.nav_settings)) },
-                    selected = false,
-                    onClick = { scope.launch { drawerState.close() } },
+                    onClick = { showAddCenterDialog = true },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.weight(1f))
+                HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = Color(0xFFF1F1F1))
+                
+                NavigationDrawerItem(
+                    label = { Text(stringResource(R.string.sign_out), color = Color.Red) },
+                    selected = false,
+                    onClick = { scope.launch { drawerState.close() } },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+                Spacer(Modifier.height(16.dp))
             }
         }
     ) {
@@ -327,11 +395,16 @@ fun CabinListScreen(
             title = { Text(stringResource(R.string.add_cabin_title)) },
             text = {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(stringResource(R.string.section_general), fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp)
+                    Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = newName, onValueChange = { newName = it },
                         label = { Text(stringResource(R.string.cabin_name_label)) }, modifier = Modifier.fillMaxWidth(), singleLine = true
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(stringResource(R.string.section_price), fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp)
+                    Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
                             value = newPrice, onValueChange = { newPrice = it },
@@ -349,18 +422,33 @@ fun CabinListScreen(
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = newRooms, onValueChange = { newRooms = it },
-                        label = { Text(stringResource(R.string.rooms_count_label)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), singleLine = true
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = newBeds, onValueChange = { newBeds = it },
-                        label = { Text(stringResource(R.string.beds_count_label)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), singleLine = true
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = newShower, onCheckedChange = { newShower = it }); Text(stringResource(R.string.has_shower_label)) }
-                    Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = newToilet, onCheckedChange = { newToilet = it }); Text(stringResource(R.string.has_toilet_label)) }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(stringResource(R.string.section_capacity), fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = newRooms, onValueChange = { newRooms = it },
+                            label = { Text(stringResource(R.string.rooms_count_label)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
+                            modifier = Modifier.weight(1f).padding(end = 8.dp), singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = newBeds, onValueChange = { newBeds = it },
+                            label = { Text(stringResource(R.string.beds_count_label)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
+                            modifier = Modifier.weight(1f), singleLine = true
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(stringResource(R.string.section_amenities), fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) { 
+                        Checkbox(checked = newShower, onCheckedChange = { newShower = it })
+                        Text(stringResource(R.string.has_shower_label)) 
+                        Spacer(Modifier.width(16.dp))
+                        Checkbox(checked = newToilet, onCheckedChange = { newToilet = it })
+                        Text(stringResource(R.string.has_toilet_label)) 
+                    }
                 }
             },
             confirmButton = {
@@ -383,50 +471,118 @@ fun CabinListScreen(
         )
     }
 
+    if (showAddCenterDialog) {
+        var centerName by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showAddCenterDialog = false },
+            title = { Text(stringResource(R.string.create_new_center)) },
+            text = {
+                OutlinedTextField(
+                    value = centerName,
+                    onValueChange = { centerName = it },
+                    label = { Text(stringResource(R.string.center_name_hint)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onAddCenter(centerName)
+                    showAddCenterDialog = false
+                }, enabled = centerName.isNotBlank()) { Text(stringResource(R.string.add_button)) }
+            },
+            dismissButton = { TextButton(onClick = { showAddCenterDialog = false }) { Text(stringResource(R.string.cancel_button)) } }
+        )
+    }
+
     if (showFilterDialog) {
         AlertDialog(
-            onDismissRequest = { showFilterDialog = false }, title = { Text(stringResource(R.string.filters_title)) },
+            onDismissRequest = { showFilterDialog = false },
+            title = { Text(stringResource(R.string.filters_title), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B4332)) },
             text = {
-                Column {
-                    OutlinedTextField(value = maxPriceInput, onValueChange = { maxPriceInput = it }, label = { Text(stringResource(R.string.max_price_label)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
-                    OutlinedTextField(value = minRoomsInput, onValueChange = { minRoomsInput = it }, label = { Text(stringResource(R.string.min_rooms_label)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
-                    OutlinedTextField(value = minBedsInput, onValueChange = { minBedsInput = it }, label = { Text(stringResource(R.string.min_beds_label)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = reqShower, onCheckedChange = { reqShower = it }); Text(stringResource(R.string.req_shower_label)) }
-                    Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = reqToilet, onCheckedChange = { reqToilet = it }); Text(stringResource(R.string.req_toilet_label)) }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    val dateRangeText = if (filterStartEpoch != null && filterEndEpoch != null) {
-                        val formatter = DateTimeFormatter.ofPattern("dd.MM")
-                        val start = Instant.ofEpochMilli(filterStartEpoch!!).atZone(ZoneId.of("UTC")).toLocalDate().format(formatter)
-                        val end = Instant.ofEpochMilli(filterEndEpoch!!).atZone(ZoneId.of("UTC")).toLocalDate().format(formatter)
-                        "$start - $end"
-                    } else {
-                        stringResource(R.string.all_dates_label)
-                    }
-
-                    OutlinedButton(
-                        onClick = { showDatePicker = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF1B4332))
-                    ) {
-                        Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column(horizontalAlignment = Alignment.Start) {
-                            Text(stringResource(R.string.filter_dates_label), fontSize = 11.sp, color = Color.Gray)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    FilterSection(stringResource(R.string.section_general)) {
+                        OutlinedButton(
+                            onClick = { showDatePicker = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF1B4332))
+                        ) {
+                            val dateRangeText = if (filterStartEpoch != null && filterEndEpoch != null) {
+                                val formatter = DateTimeFormatter.ofPattern("dd.MM")
+                                val start = Instant.ofEpochMilli(filterStartEpoch!!).atZone(ZoneId.of("UTC")).toLocalDate().format(formatter)
+                                val end = Instant.ofEpochMilli(filterEndEpoch!!).atZone(ZoneId.of("UTC")).toLocalDate().format(formatter)
+                                "$start - $end"
+                            } else {
+                                stringResource(R.string.all_dates_label)
+                            }
+                            Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(dateRangeText, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         }
-                        Spacer(modifier = Modifier.weight(1f))
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                    FilterSection(stringResource(R.string.section_price)) {
+                        OutlinedTextField(
+                            value = maxPriceInput, onValueChange = { maxPriceInput = it },
+                            label = { Text(stringResource(R.string.max_price_label)) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                    FilterSection(stringResource(R.string.section_capacity)) {
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = minRoomsInput, onValueChange = { minRoomsInput = it },
+                                label = { Text(stringResource(R.string.min_rooms_label)) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f).padding(end = 8.dp),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = minBedsInput, onValueChange = { minBedsInput = it },
+                                label = { Text(stringResource(R.string.min_beds_label)) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                    FilterSection(stringResource(R.string.section_amenities)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = reqShower, onCheckedChange = { reqShower = it })
+                            Text(stringResource(R.string.req_shower_label))
+                            Spacer(Modifier.width(16.dp))
+                            Checkbox(checked = reqToilet, onCheckedChange = { reqToilet = it })
+                            Text(stringResource(R.string.req_toilet_label))
+                        }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showFilterDialog = false }) { Text(stringResource(R.string.apply_button)) } },
-            dismissButton = { 
-                TextButton(onClick = { 
-                    minRoomsInput = ""; minBedsInput = ""; maxPriceInput = ""; reqShower = false; reqToilet = false
-                    filterStartEpoch = null; filterEndEpoch = null
-                }) { Text(stringResource(R.string.reset_button)) } 
+            confirmButton = {
+                Button(
+                    onClick = { showFilterDialog = false },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B4332))
+                ) { Text(stringResource(R.string.apply_button)) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        minRoomsInput = ""; minBedsInput = ""; maxPriceInput = ""; reqShower = false; reqToilet = false
+                        filterStartEpoch = null; filterEndEpoch = null
+                        showFilterDialog = false
+                    }
+                ) { Text(stringResource(R.string.reset_button)) }
             }
         )
     }
@@ -620,6 +776,15 @@ fun CabinFeatureChip(text: String) {
 
 
 
+@Composable
+fun FilterSection(title: String, content: @Composable () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(title, fontWeight = FontWeight.Bold, color = Color.Gray, fontSize = 12.sp)
+        Spacer(Modifier.height(8.dp))
+        content()
+    }
+}
+
 @Preview(showBackground = true, widthDp = 1200)
 @Composable
 fun CabinListScreenPreview() {
@@ -641,9 +806,17 @@ fun CabinListScreenPreview() {
             Cabin("6", "Riverside Cabin", emptyList(), true, true, 2, 5, "", 155, "$")
         )
     }
+    val centers = remember { listOf(Center("Recreation Center", true)) }
+    val user = UserAccount("Admin User", "admin@resortcontrol.com")
+
     ResortControlTheme {
         CabinListScreen(
             cabins = cabins,
+            user = user,
+            centers = centers,
+            activeCenter = "Recreation Center",
+            onCenterSelect = {},
+            onAddCenter = {},
             onCabinClick = {},
             onAddCabin = {}
         )

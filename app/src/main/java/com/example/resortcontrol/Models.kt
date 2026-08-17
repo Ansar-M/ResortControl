@@ -34,3 +34,14 @@ data class DayInfo(
     val firstBooking: Booking? = null,
     val secondBooking: Booking? = null
 )
+
+data class UserAccount(
+    val name: String,
+    val email: String,
+    val photoUrl: String? = null
+)
+
+data class Center(
+    val name: String,
+    val isActive: Boolean = false
+)

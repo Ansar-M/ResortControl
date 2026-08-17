@@ -10,6 +10,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -37,7 +38,12 @@ import androidx.compose.ui.res.stringResource
 import coil.compose.AsyncImage
 
 @Composable
-fun CabinDetailScreen(cabin: Cabin) {
+fun CabinDetailScreen(
+    cabin: Cabin,
+    onAddBooking: (Booking) -> Unit = {},
+    onDeleteBooking: (Booking) -> Unit = {},
+    onUpdateCabin: (Cabin) -> Unit = {}
+) {
     var currentCabin by remember { mutableStateOf(cabin) }
     val photos = remember { mutableStateListOf(*currentCabin.photos.toTypedArray()) }
     var selectedPhotoForView by remember { mutableStateOf<String?>(null) }
@@ -48,7 +54,14 @@ fun CabinDetailScreen(cabin: Cabin) {
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri -> if (uri != null) { photos.add(uri.toString()) } }
+        onResult = { uri -> 
+            if (uri != null) { 
+                photos.add(uri.toString()) 
+                val updated = currentCabin.copy(photos = photos.toList())
+                currentCabin = updated
+                onUpdateCabin(updated)
+            } 
+        }
     )
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -92,51 +105,78 @@ fun CabinDetailScreen(cabin: Cabin) {
 
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(photos.size + 1) { index ->
                 if (index < photos.size) {
                     val currentPhoto = photos[index]
                     Box(
-                        modifier = Modifier.size(width = 280.dp, height = 180.dp).clip(RoundedCornerShape(12.dp)).background(Color.LightGray)
+                        modifier = Modifier
+                            .size(width = 300.dp, height = 200.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFF1F0EA))
                     ) {
                         AsyncImage(
-                            model = currentPhoto, contentDescription = stringResource(R.string.photo_desc), contentScale = ContentScale.Crop,
+                            model = currentPhoto, 
+                            contentDescription = stringResource(R.string.photo_desc), 
+                            contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize().clickable { selectedPhotoForView = currentPhoto }
                         )
-                        IconButton(
-                            onClick = { photos.removeAt(index) },
-                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(32.dp).background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(50))
-                        ) { Text("X", color = Color.White, fontWeight = FontWeight.Bold) }
+                        Surface(
+                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+                            shape = CircleShape,
+                            color = Color.Black.copy(alpha = 0.5f)
+                        ) {
+                            IconButton(
+                                onClick = { 
+                                    photos.removeAt(index) 
+                                    val updated = currentCabin.copy(photos = photos.toList())
+                                    currentCabin = updated
+                                    onUpdateCabin(updated)
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp)) }
+                        }
                     }
                 } else {
                     Box(
-                        modifier = Modifier.size(width = 280.dp, height = 180.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFE0E0E0))
+                        modifier = Modifier
+                            .size(width = 300.dp, height = 200.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFF1F0EA))
                             .clickable { photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         contentAlignment = Alignment.Center
-                    ) { Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(R.string.add_photo_desc), modifier = Modifier.size(48.dp), tint = Color.Gray) }
+                    ) { 
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(32.dp), tint = Color(0xFF1B4332))
+                            Spacer(Modifier.height(8.dp))
+                            Text(stringResource(R.string.add_photo_desc), color = Color(0xFF1B4332), fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                        }
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                CabinFeatureChip(text = "🚪${currentCabin.roomsCount}")
-                CabinFeatureChip(text = "🛏${currentCabin.bedsCount}")
-                if (currentCabin.hasShower) CabinFeatureChip(text = "🚿")
-                if (currentCabin.hasToilet) CabinFeatureChip(text = "🚽")
+        // FEATURES SECTION
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.section_amenities), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = { showEditFeaturesDialog = true }) {
+                    Icon(Icons.Default.Edit, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(18.dp))
+                }
             }
-            IconButton(onClick = { showEditFeaturesDialog = true }) {
-                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_features_desc), tint = Color.Gray)
+            Spacer(modifier = Modifier.height(8.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FeatureTag("🚪 ${currentCabin.roomsCount} " + stringResource(R.string.rooms_suffix))
+                FeatureTag("🛏 ${currentCabin.bedsCount} " + stringResource(R.string.sleeping_spaces_suffix))
+                if (currentCabin.hasShower) FeatureTag("🚿 " + stringResource(R.string.shower_label))
+                if (currentCabin.hasToilet) FeatureTag("🚽 " + stringResource(R.string.toilet_label))
             }
         }
 
@@ -145,14 +185,20 @@ fun CabinDetailScreen(cabin: Cabin) {
         OutlinedTextField(
             value = currentCabin.comment,
             onValueChange = { newComment ->
-                currentCabin = currentCabin.copy(comment = newComment)
+                val updated = currentCabin.copy(comment = newComment)
+                currentCabin = updated
+                onUpdateCabin(updated)
             },
             label = { Text(stringResource(R.string.admin_note_label)) },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
         )
 
         Spacer(modifier = Modifier.height(24.dp))
-        BookingTimelineVisualizer(cabin = currentCabin)
+        BookingTimelineVisualizer(
+            cabin = currentCabin,
+            onAddBooking = onAddBooking,
+            onDeleteBooking = onDeleteBooking
+        )
         Spacer(modifier = Modifier.height(32.dp))
     }
 
@@ -169,7 +215,9 @@ fun CabinDetailScreen(cabin: Cabin) {
             },
             confirmButton = {
                 TextButton(onClick = {
-                    currentCabin = currentCabin.copy(number = nameInput)
+                    val updated = currentCabin.copy(number = nameInput)
+                    currentCabin = updated
+                    onUpdateCabin(updated)
                     showEditNameDialog = false
                 }) { Text(stringResource(R.string.save_button)) }
             },
@@ -214,10 +262,12 @@ fun CabinDetailScreen(cabin: Cabin) {
             },
             confirmButton = {
                 TextButton(onClick = {
-                    currentCabin = currentCabin.copy(
+                    val updated = currentCabin.copy(
                         price = priceInput.toIntOrNull() ?: 0,
                         currency = currencyInput
                     )
+                    currentCabin = updated
+                    onUpdateCabin(updated)
                     showEditPriceDialog = false
                 }) { Text(stringResource(R.string.save_button)) }
             },
@@ -252,12 +302,14 @@ fun CabinDetailScreen(cabin: Cabin) {
             },
             confirmButton = {
                 TextButton(onClick = {
-                    currentCabin = currentCabin.copy(
+                    val updated = currentCabin.copy(
                         roomsCount = roomsInput.toIntOrNull() ?: 0,
                         bedsCount = bedsInput.toIntOrNull() ?: 0,
                         hasShower = hasShowerInput,
                         hasToilet = hasToiletInput
                     )
+                    currentCabin = updated
+                    onUpdateCabin(updated)
                     showEditFeaturesDialog = false
                 }) { Text(stringResource(R.string.save_button)) }
             },
@@ -286,6 +338,22 @@ fun CabinDetailScreen(cabin: Cabin) {
                 ) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close_button), tint = Color.White) }
             }
         }
+    }
+}
+
+@Composable
+fun FeatureTag(text: String) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = Color(0xFFE0EFE5),
+        contentColor = Color(0xFF1B4332)
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 
