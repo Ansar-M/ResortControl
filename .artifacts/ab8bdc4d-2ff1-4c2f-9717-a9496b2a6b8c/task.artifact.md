@@ -1,6 +1,9 @@
-- [x] Update `MainActivity.kt` with User and Center state
-- [x] Redesign Side Menu (Drawer) in `CabinListScreen.kt`
-- [x] Transition Filter system to `ModalBottomSheet` in `CabinListScreen.kt`
-- [x] Redesign "Add Cabin" dialog in `CabinListScreen.kt`
-- [x] Improve `CabinDetailScreen.kt` layout and feature visualization
-- [x] Verify build and functionality
+- [x] **Adaptive UI Optimization**
+    - [x] Integrated `material3-window-size-class` dependency
+    - [x] Implemented responsive grid (1 column on phones, 3 on tablets)
+    - [x] Redesigned header for compact screens (mobile-friendly layout)
+    - [x] Added responsive image scaling in detail view
+- [x] **Feature Parity & Fixes**
+    - [x] Added "Delete Center" action to both Tablet and Phone drawer
+    - [x] Improved deletion logic reliability in `MainActivity.kt`
+    - [x] Verified build stability

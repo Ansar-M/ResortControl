@@ -10,7 +10,10 @@ import java.time.LocalDate
 
 @Entity(tableName = "centers")
 data class CenterEntity(
-    @PrimaryKey val name: String
+    @PrimaryKey val name: String,
+    val lastModified: Long = System.currentTimeMillis(),
+    val isSynced: Boolean = false,
+    val isDeleted: Boolean = false
 )
 
 @Entity(tableName = "cabins")
@@ -25,7 +28,10 @@ data class CabinEntity(
     val bedsCount: Int,
     val comment: String,
     val price: Int,
-    val currency: String
+    val currency: String,
+    val lastModified: Long = System.currentTimeMillis(),
+    val isSynced: Boolean = false,
+    val isDeleted: Boolean = false
 )
 
 @Entity(
@@ -46,7 +52,10 @@ data class BookingEntity(
     val startDate: LocalDate,
     val endDate: LocalDate,
     val note: String,
-    val colorArgb: Int
+    val colorArgb: Int,
+    val lastModified: Long = System.currentTimeMillis(),
+    val isSynced: Boolean = false,
+    val isDeleted: Boolean = false
 )
 
 // --- CONVERTERS (Обучаем Room сохранять даты, списки и цвета) ---
@@ -75,33 +84,72 @@ class Converters {
 
 @Dao
 interface ResortDao {
-    @Query("SELECT * FROM centers")
+    @Query("SELECT * FROM centers WHERE isDeleted = 0")
     suspend fun getAllCenters(): List<CenterEntity>
+
+    @Query("SELECT * FROM centers WHERE isSynced = 0")
+    suspend fun getUnsyncedCenters(): List<CenterEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCenter(center: CenterEntity): Long
 
-    @Query("SELECT * FROM cabins")
+    @Query("DELETE FROM centers WHERE name = :name")
+    suspend fun deleteCenter(name: String): Int
+
+    @Query("UPDATE cabins SET centerName = :newName WHERE centerName = :oldName")
+    suspend fun updateCabinsCenterName(oldName: String, newName: String): Int
+
+    @Transaction
+    suspend fun updateCenterName(oldName: String, newName: String): Int {
+        val oldCenter = getAllCenters().find { it.name == oldName } ?: return 0
+        insertCenter(oldCenter.copy(name = newName, isSynced = false, lastModified = System.currentTimeMillis()))
+        updateCabinsCenterName(oldName, newName)
+        deleteCenter(oldName)
+        return 1
+    }
+
+    @Query("SELECT * FROM cabins WHERE isDeleted = 0")
     suspend fun getAllCabins(): List<CabinEntity>
+
+    @Query("SELECT * FROM cabins WHERE isSynced = 0")
+    suspend fun getUnsyncedCabins(): List<CabinEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCabin(cabin: CabinEntity): Long
 
-    @Query("SELECT * FROM bookings")
+    @Query("SELECT * FROM bookings WHERE isDeleted = 0")
     suspend fun getAllBookings(): List<BookingEntity>
+
+    @Query("SELECT * FROM bookings WHERE isSynced = 0")
+    suspend fun getUnsyncedBookings(): List<BookingEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBooking(booking: BookingEntity): Long
 
-    @Query("DELETE FROM bookings WHERE id = :bookingId")
-    suspend fun deleteBooking(bookingId: String): Int
+    @Query("UPDATE bookings SET isDeleted = 1, isSynced = 0, lastModified = :time WHERE id = :bookingId")
+    suspend fun softDeleteBooking(bookingId: String, time: Long = System.currentTimeMillis()): Int
+
+    @Query("UPDATE cabins SET isDeleted = 1, isSynced = 0, lastModified = :time WHERE id = :cabinId")
+    suspend fun softDeleteCabin(cabinId: String, time: Long = System.currentTimeMillis()): Int
+
+    @Query("UPDATE centers SET isDeleted = 1, isSynced = 0, lastModified = :time WHERE name = :name")
+    suspend fun softDeleteCenter(name: String, time: Long = System.currentTimeMillis()): Int
+
+    @Delete
+    suspend fun hardDeleteBooking(booking: BookingEntity): Int
+
+    @Delete
+    suspend fun hardDeleteCabin(cabin: CabinEntity): Int
+
+    @Delete
+    suspend fun hardDeleteCenter(center: CenterEntity): Int
 }
 
 // --- DATABASE CLASS ---
 
 @Database(
     entities = [CenterEntity::class, CabinEntity::class, BookingEntity::class],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -118,7 +166,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "resort_db.sqlite" // Имя файла базы на устройстве
-                ).build()
+                )
+                .fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
                 instance
             }

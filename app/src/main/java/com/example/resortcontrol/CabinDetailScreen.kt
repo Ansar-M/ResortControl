@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,11 +37,15 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import com.example.resortcontrol.util.ImageUtils
+import kotlinx.coroutines.launch
 import coil.compose.AsyncImage
 
 @Composable
 fun CabinDetailScreen(
     cabin: Cabin,
+    windowSizeClass: WindowSizeClass,
     onAddBooking: (Booking) -> Unit = {},
     onDeleteBooking: (Booking) -> Unit = {},
     onUpdateCabin: (Cabin) -> Unit = {}
@@ -52,14 +58,22 @@ fun CabinDetailScreen(
     var showEditNameDialog by remember { mutableStateOf(false) }
     var showEditPriceDialog by remember { mutableStateOf(false) } // НОВОЕ: Состояние для окна изменения цены
 
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri -> 
             if (uri != null) { 
-                photos.add(uri.toString()) 
-                val updated = currentCabin.copy(photos = photos.toList())
-                currentCabin = updated
-                onUpdateCabin(updated)
+                scope.launch {
+                    val localPath = ImageUtils.processAndSaveImage(context, uri)
+                    if (localPath != null) {
+                        photos.add(localPath) 
+                        val updated = currentCabin.copy(photos = photos.toList())
+                        currentCabin = updated
+                        onUpdateCabin(updated)
+                    }
+                }
             } 
         }
     )
@@ -103,16 +117,20 @@ fun CabinDetailScreen(
             }
         }
 
+        val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
+
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(photos.size + 1) { index ->
+                val cardWidth = if (isCompact) 260.dp else 300.dp
+                val cardHeight = if (isCompact) 180.dp else 200.dp
                 if (index < photos.size) {
                     val currentPhoto = photos[index]
                     Box(
                         modifier = Modifier
-                            .size(width = 300.dp, height = 200.dp)
+                            .size(width = cardWidth, height = cardHeight)
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color(0xFFF1F0EA))
                     ) {
@@ -141,7 +159,7 @@ fun CabinDetailScreen(
                 } else {
                     Box(
                         modifier = Modifier
-                            .size(width = 300.dp, height = 200.dp)
+                            .size(width = cardWidth, height = cardHeight)
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color(0xFFF1F0EA))
                             .clickable { photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
