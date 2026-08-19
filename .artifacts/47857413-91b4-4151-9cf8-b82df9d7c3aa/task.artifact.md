@@ -1,0 +1,4 @@
+- [x] Add language toggle to `ModalDrawerSheet` in `CabinListScreen.kt`
+- [x] Add cabin count label to mobile header in `CabinListScreen.kt`
+- [x] Fix `activeCenter` persistence in `MainActivity.kt`
+- [x] Verify build with `./gradlew assembleDebug`

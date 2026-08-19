@@ -4,31 +4,42 @@ import android.content.Context
 import androidx.room.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import java.time.LocalDate
+import kotlinx.coroutines.flow.Flow
 
-// --- ENTITIES (Таблицы в базе данных) ---
+// --- ENTITIES (Таблицы) ---
 
 @Entity(tableName = "centers")
 data class CenterEntity(
-    @PrimaryKey val name: String,
+    @PrimaryKey val name: String = "",
     val lastModified: Long = System.currentTimeMillis(),
     val isSynced: Boolean = false,
     val isDeleted: Boolean = false
 )
 
-@Entity(tableName = "cabins")
+@Entity(
+    tableName = "cabins",
+    foreignKeys = [
+        ForeignKey(
+            entity = CenterEntity::class,
+            parentColumns = ["name"],
+            childColumns = ["centerName"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["centerName"])]
+)
 data class CabinEntity(
-    @PrimaryKey val id: String,
-    val number: String,
-    val centerName: String,
-    val photos: List<String>,
-    val hasShower: Boolean,
-    val hasToilet: Boolean,
-    val roomsCount: Int,
-    val bedsCount: Int,
-    val comment: String,
-    val price: Int,
-    val currency: String,
+    @PrimaryKey val id: String = "",
+    val number: String = "",
+    val centerName: String = "",
+    val photos: List<String> = emptyList(),
+    val hasShower: Boolean = false,
+    val hasToilet: Boolean = false,
+    val roomsCount: Int = 1,
+    val bedsCount: Int = 1,
+    val comment: String = "",
+    val price: Int = 0,
+    val currency: String = "₸",
     val lastModified: Long = System.currentTimeMillis(),
     val isSynced: Boolean = false,
     val isDeleted: Boolean = false
@@ -47,31 +58,25 @@ data class CabinEntity(
     indices = [Index(value = ["cabinId"])]
 )
 data class BookingEntity(
-    @PrimaryKey val id: String,
-    val cabinId: String,
-    val startDate: LocalDate,
-    val endDate: LocalDate,
-    val note: String,
-    val colorArgb: Int,
+    @PrimaryKey val id: String = "",
+    val cabinId: String = "",
+    val startDate: Long = 0,
+    val endDate: Long = 0,
+    val note: String = "",
+    val colorArgb: Int = 0,
     val lastModified: Long = System.currentTimeMillis(),
     val isSynced: Boolean = false,
     val isDeleted: Boolean = false
 )
 
-// --- CONVERTERS (Обучаем Room сохранять даты, списки и цвета) ---
+// --- CONVERTERS ---
 
 class Converters {
     @TypeConverter
-    fun fromTimestamp(value: Long?): LocalDate? = value?.let { LocalDate.ofEpochDay(it) }
+    fun fromStringList(value: List<String>): String = value.joinToString(",")
 
     @TypeConverter
-    fun dateToTimestamp(date: LocalDate?): Long? = date?.toEpochDay()
-
-    @TypeConverter
-    fun fromStringList(value: String?): List<String> = if (value.isNullOrEmpty()) emptyList() else value.split("||")
-
-    @TypeConverter
-    fun toStringList(list: List<String>?): String = list?.joinToString("||") ?: ""
+    fun toStringList(value: String): List<String> = if (value.isBlank()) emptyList() else value.split(",")
 
     @TypeConverter
     fun fromColor(color: Color): Int = color.toArgb()
@@ -83,25 +88,31 @@ class Converters {
 // --- DAO (Интерфейс для запросов) ---
 
 @Dao
-interface ResortDao {
+abstract class ResortDao {
     @Query("SELECT * FROM centers WHERE isDeleted = 0")
-    suspend fun getAllCenters(): List<CenterEntity>
+    abstract fun getAllCentersFlow(): Flow<List<CenterEntity>>
+
+    @Query("SELECT * FROM centers")
+    abstract suspend fun getAllCentersWithDeleted(): List<CenterEntity>
+
+    @Query("SELECT * FROM centers WHERE name = :name")
+    abstract suspend fun getCenterByName(name: String): CenterEntity?
 
     @Query("SELECT * FROM centers WHERE isSynced = 0")
-    suspend fun getUnsyncedCenters(): List<CenterEntity>
+    abstract suspend fun getUnsyncedCenters(): List<CenterEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertCenter(center: CenterEntity): Long
+    abstract suspend fun insertCenter(center: CenterEntity): Long
 
     @Query("DELETE FROM centers WHERE name = :name")
-    suspend fun deleteCenter(name: String): Int
+    abstract suspend fun deleteCenter(name: String): Int
 
     @Query("UPDATE cabins SET centerName = :newName WHERE centerName = :oldName")
-    suspend fun updateCabinsCenterName(oldName: String, newName: String): Int
+    abstract suspend fun updateCabinsCenterName(oldName: String, newName: String): Int
 
     @Transaction
-    suspend fun updateCenterName(oldName: String, newName: String): Int {
-        val oldCenter = getAllCenters().find { it.name == oldName } ?: return 0
+    open suspend fun updateCenterName(oldName: String, newName: String): Int {
+        val oldCenter = getCenterByName(oldName) ?: return 0
         insertCenter(oldCenter.copy(name = newName, isSynced = false, lastModified = System.currentTimeMillis()))
         updateCabinsCenterName(oldName, newName)
         deleteCenter(oldName)
@@ -109,47 +120,91 @@ interface ResortDao {
     }
 
     @Query("SELECT * FROM cabins WHERE isDeleted = 0")
-    suspend fun getAllCabins(): List<CabinEntity>
+    abstract fun getAllCabinsFlow(): Flow<List<CabinEntity>>
+
+    @Query("SELECT * FROM cabins WHERE isDeleted = 0")
+    abstract suspend fun getAllCabins(): List<CabinEntity>
+
+    @Query("SELECT * FROM cabins")
+    abstract suspend fun getAllCabinsWithDeleted(): List<CabinEntity>
+
+    @Query("SELECT * FROM cabins WHERE id = :id")
+    abstract suspend fun getCabinById(id: String): CabinEntity?
 
     @Query("SELECT * FROM cabins WHERE isSynced = 0")
-    suspend fun getUnsyncedCabins(): List<CabinEntity>
+    abstract suspend fun getUnsyncedCabins(): List<CabinEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertCabin(cabin: CabinEntity): Long
+    abstract suspend fun insertCabin(cabin: CabinEntity): Long
 
     @Query("SELECT * FROM bookings WHERE isDeleted = 0")
-    suspend fun getAllBookings(): List<BookingEntity>
+    abstract fun getAllBookingsFlow(): Flow<List<BookingEntity>>
+
+    @Query("SELECT * FROM bookings")
+    abstract suspend fun getAllBookingsWithDeleted(): List<BookingEntity>
+
+    @Query("SELECT * FROM bookings WHERE id = :id")
+    abstract suspend fun getBookingById(id: String): BookingEntity?
 
     @Query("SELECT * FROM bookings WHERE isSynced = 0")
-    suspend fun getUnsyncedBookings(): List<BookingEntity>
+    abstract suspend fun getUnsyncedBookings(): List<BookingEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBooking(booking: BookingEntity): Long
+    abstract suspend fun insertBooking(booking: BookingEntity): Long
 
     @Query("UPDATE bookings SET isDeleted = 1, isSynced = 0, lastModified = :time WHERE id = :bookingId")
-    suspend fun softDeleteBooking(bookingId: String, time: Long = System.currentTimeMillis()): Int
+    abstract suspend fun markBookingDeleted(bookingId: String, time: Long): Int
+
+    @Transaction
+    open suspend fun softDeleteBooking(bookingId: String) {
+        markBookingDeleted(bookingId, System.currentTimeMillis())
+    }
 
     @Query("UPDATE cabins SET isDeleted = 1, isSynced = 0, lastModified = :time WHERE id = :cabinId")
-    suspend fun softDeleteCabin(cabinId: String, time: Long = System.currentTimeMillis()): Int
+    abstract suspend fun markCabinDeleted(cabinId: String, time: Long): Int
+
+    @Query("UPDATE bookings SET isDeleted = 1, isSynced = 0, lastModified = :time WHERE cabinId = :cabinId")
+    abstract suspend fun markBookingsDeletedByCabin(cabinId: String, time: Long): Int
+
+    @Transaction
+    open suspend fun softDeleteCabin(cabinId: String) {
+        val time = System.currentTimeMillis()
+        markCabinDeleted(cabinId, time)
+        markBookingsDeletedByCabin(cabinId, time)
+    }
 
     @Query("UPDATE centers SET isDeleted = 1, isSynced = 0, lastModified = :time WHERE name = :name")
-    suspend fun softDeleteCenter(name: String, time: Long = System.currentTimeMillis()): Int
+    abstract suspend fun markCenterDeleted(name: String, time: Long): Int
+
+    @Query("UPDATE cabins SET isDeleted = 1, isSynced = 0, lastModified = :time WHERE centerName = :name")
+    abstract suspend fun markCabinsDeletedByCenter(name: String, time: Long): Int
+
+    @Query("UPDATE bookings SET isDeleted = 1, isSynced = 0, lastModified = :time WHERE cabinId IN (SELECT id FROM cabins WHERE centerName = :name)")
+    abstract suspend fun markBookingsDeletedByCenter(name: String, time: Long): Int
+
+    @Transaction
+    open suspend fun softDeleteCenter(name: String) {
+        val time = System.currentTimeMillis()
+        markCenterDeleted(name, time)
+        markCabinsDeletedByCenter(name, time)
+        markBookingsDeletedByCenter(name, time)
+    }
 
     @Delete
-    suspend fun hardDeleteBooking(booking: BookingEntity): Int
+    abstract suspend fun hardDeleteBooking(booking: BookingEntity): Int
 
     @Delete
-    suspend fun hardDeleteCabin(cabin: CabinEntity): Int
+    abstract suspend fun hardDeleteCabin(cabin: CabinEntity): Int
 
     @Delete
-    suspend fun hardDeleteCenter(center: CenterEntity): Int
+    abstract suspend fun hardDeleteCenter(center: CenterEntity): Int
 }
 
 // --- DATABASE CLASS ---
 
 @Database(
     entities = [CenterEntity::class, CabinEntity::class, BookingEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -165,7 +220,7 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "resort_db.sqlite" // Имя файла базы на устройстве
+                    "resort_database"
                 )
                 .fallbackToDestructiveMigration()
                 .build()

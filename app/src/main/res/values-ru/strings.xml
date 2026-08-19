@@ -101,5 +101,10 @@
     <string name="section_capacity">Требования к вместимости</string>
     <string name="section_amenities">Удобства</string>
     <string name="section_price">Ценовой диапазон</string>
+    <string name="delete_center_title">Удалить базу?</string>
+    <string name="delete_center_confirm">Вы уверены, что хотите удалить базу «%1$s» и все её домики? Это действие нельзя отменить.</string>
+    <string name="delete_cabin_title_dialog">Удалить домик?</string>
+    <string name="delete_cabin_confirm">Вы уверены, что хотите удалить домик «%1$s»?</string>
+    <string name="delete_button">Удалить</string>
 
 </resources>

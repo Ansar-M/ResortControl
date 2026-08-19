@@ -9,7 +9,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.resortcontrol.ui.theme.ResortControlTheme
 import com.example.resortcontrol.auth.AuthManager
+import com.example.resortcontrol.sync.SyncRepository
 import com.example.resortcontrol.sync.SyncWorker
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import androidx.work.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.layout.*
@@ -29,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
+import java.time.LocalDate
 
 class MainActivity : AppCompatActivity() {
 
@@ -48,37 +52,85 @@ class MainActivity : AppCompatActivity() {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     val scope = rememberCoroutineScope()
                     val user by authManager.currentUser.collectAsState()
-                    val cabins = remember { mutableStateListOf<Cabin>() }
-                    val centers = remember { mutableStateListOf<Center>() }
-                    var activeCenter by rememberSaveable { mutableStateOf("Recreation Center") }
+                    val syncRepository = remember { SyncRepository(resortDao) }
+                    
+                    LaunchedEffect(user) {
+                        android.util.Log.d("MainActivity", "User state changed: ${user?.email}")
+                        user?.let {
+                            // Trigger immediate pull from cloud when user is detected
+                            scope.launch {
+                                syncRepository.pullFromCloud(Firebase.auth.currentUser?.uid ?: "")
+                            }
+                        }
+                    }
+
+                    var isSigningIn by remember { mutableStateOf(false) }
 
                     if (user == null) {
-                        SignInScreen(onSignInClick = {
-                            scope.launch {
-                                try {
-                                    authManager.signInWithGoogle(webClientId)
-                                } catch (e: Exception) {
-                                    android.util.Log.e("MainActivity", "Sign in failed", e)
+                        SignInScreen(
+                            isSigningIn = isSigningIn,
+                            onSignInClick = {
+                                isSigningIn = true
+                                scope.launch {
+                                    try {
+                                        authManager.signInWithGoogle(webClientId)
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("MainActivity", "Sign in failed", e)
+                                    } finally {
+                                        isSigningIn = false
+                                    }
                                 }
                             }
-                        })
+                        )
                     } else {
-                        LaunchedEffect(Unit) {
-                            val centerEntities = resortDao.getAllCenters()
-                            centers.clear()
+                        // REACTIVE DATA OBSERVATION
+                        val cabinEntities by resortDao.getAllCabinsFlow().collectAsState(initial = emptyList())
+                        val bookingEntities by resortDao.getAllBookingsFlow().collectAsState(initial = emptyList())
+                        val centerEntities by resortDao.getAllCentersFlow().collectAsState(initial = emptyList())
+                        
+                        var activeCenter by rememberSaveable { mutableStateOf("") }
+                        
+                        val centers = remember(centerEntities, activeCenter) {
                             if (centerEntities.isEmpty()) {
-                                resortDao.insertCenter(CenterEntity("Recreation Center"))
-                                centers.add(Center("Recreation Center", true))
+                                listOf(Center("Recreation Center", true))
                             } else {
-                                centers.addAll(centerEntities.map { Center(it.name, it.name == activeCenter) })
+                                centerEntities.map { Center(it.name, it.name == activeCenter || (activeCenter == "" && centerEntities.first().name == it.name)) }
                             }
-                            loadCabins(resortDao, activeCenter, cabins)
-                            scheduleSync()
+                        }
+                        
+                        // Set default active center if none selected
+                        LaunchedEffect(centerEntities) {
+                            if (activeCenter == "") {
+                                if (centerEntities.isNotEmpty()) {
+                                    activeCenter = centerEntities.first().name
+                                } else {
+                                    // Create default if no centers exist
+                                    resortDao.insertCenter(CenterEntity("Recreation Center"))
+                                    activeCenter = "Recreation Center"
+                                }
+                            }
                         }
 
-                        // Reload cabins when active center changes
-                        LaunchedEffect(activeCenter) {
-                            loadCabins(resortDao, activeCenter, cabins)
+                        val cabins = remember(cabinEntities, bookingEntities, activeCenter) {
+                            cabinEntities
+                                .filter { it.centerName == activeCenter }
+                                .map { entity ->
+                                    val cabinBookings = bookingEntities
+                                        .filter { it.cabinId == entity.id }
+                                        .map { b ->
+                                            Booking(b.id, LocalDate.ofEpochDay(b.startDate), LocalDate.ofEpochDay(b.endDate), b.note, Color(b.colorArgb))
+                                        }
+                                    Cabin(
+                                        entity.id, entity.number, entity.photos, entity.hasShower, entity.hasToilet,
+                                        entity.roomsCount, entity.bedsCount, entity.comment, entity.price, entity.currency
+                                    ).apply {
+                                        bookings.addAll(cabinBookings)
+                                    }
+                                }
+                        }
+
+                        LaunchedEffect(Unit) {
+                            scheduleSync()
                         }
 
                         var selectedCabinId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -93,27 +145,27 @@ class MainActivity : AppCompatActivity() {
                                 windowSizeClass = windowSizeClass,
                                 onCenterSelect = { center ->
                                     activeCenter = center.name
-                                    centers.indices.forEach { i ->
-                                        centers[i] = centers[i].copy(isActive = centers[i].name == center.name)
-                                    }
                                 },
                                 onAddCenter = { name ->
                                     scope.launch {
                                         resortDao.insertCenter(CenterEntity(name))
-                                        centers.add(Center(name, false))
                                         scheduleSync()
                                     }
                                 },
                                 onEditCenter = { center, newName ->
                                     scope.launch {
                                         resortDao.updateCenterName(center.name, newName)
-                                        // Update local state
-                                        val index = centers.indexOfFirst { it.name == center.name }
-                                        if (index != -1) {
-                                            centers[index] = centers[index].copy(name = newName)
-                                        }
                                         if (activeCenter == center.name) {
                                             activeCenter = newName
+                                        }
+                                        scheduleSync()
+                                    }
+                                },
+                                onDeleteCenter = { center ->
+                                    scope.launch {
+                                        resortDao.softDeleteCenter(center.name)
+                                        if (activeCenter == center.name) {
+                                            activeCenter = ""
                                         }
                                         scheduleSync()
                                     }
@@ -136,24 +188,12 @@ class MainActivity : AppCompatActivity() {
                                                 isSynced = false
                                             )
                                         )
-                                        cabins.add(newCabin)
                                         scheduleSync()
                                     }
                                 },
                                 onDeleteCabin = { cabin ->
                                     scope.launch {
                                         resortDao.softDeleteCabin(cabin.id)
-                                        cabins.removeAll { it.id == cabin.id }
-                                        scheduleSync()
-                                    }
-                                },
-                                onDeleteCenter = { center ->
-                                    scope.launch {
-                                        resortDao.softDeleteCenter(center.name)
-                                        centers.removeAll { it.name == center.name }
-                                        if (activeCenter == center.name) {
-                                            activeCenter = centers.firstOrNull()?.name ?: ""
-                                        }
                                         scheduleSync()
                                     }
                                 }
@@ -186,8 +226,8 @@ class MainActivity : AppCompatActivity() {
                                         scope.launch {
                                             resortDao.insertBooking(
                                                 BookingEntity(
-                                                    newBooking.id, selectedCabin.id, newBooking.startDate,
-                                                    newBooking.endDate, newBooking.note, newBooking.color.toArgb(),
+                                                    newBooking.id, selectedCabin.id, newBooking.startDate.toEpochDay(),
+                                                    newBooking.endDate.toEpochDay(), newBooking.note, newBooking.color.toArgb(),
                                                     isSynced = false
                                                 )
                                             )
@@ -211,10 +251,6 @@ class MainActivity : AppCompatActivity() {
                                                     isSynced = false
                                                 )
                                             )
-                                            val index = cabins.indexOfFirst { it.id == updatedCabin.id }
-                                            if (index != -1) {
-                                                cabins[index] = updatedCabin
-                                            }
                                             scheduleSync()
                                         }
                                     }
@@ -246,7 +282,7 @@ class MainActivity : AppCompatActivity() {
 }
 
 @Composable
-fun SignInScreen(onSignInClick: () -> Unit) {
+fun SignInScreen(isSigningIn: Boolean, onSignInClick: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -258,35 +294,21 @@ fun SignInScreen(onSignInClick: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             Text(text = "Property management made easy", color = Color.Gray)
             Spacer(Modifier.height(48.dp))
-            Button(
-                onClick = onSignInClick,
-                modifier = Modifier.fillMaxWidth(0.7f).height(50.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B4332))
-            ) {
-                Text(stringResource(R.string.sign_in_google))
+            
+            if (isSigningIn) {
+                CircularProgressIndicator(color = Color(0xFF1B4332))
+                Spacer(Modifier.height(16.dp))
+                Text("Connecting to Google...", color = Color.Gray, fontSize = 14.sp)
+            } else {
+                Button(
+                    onClick = onSignInClick,
+                    modifier = Modifier.fillMaxWidth(0.7f).height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B4332))
+                ) {
+                    Text(stringResource(R.string.sign_in_google))
+                }
             }
         }
     }
-}
-
-private suspend fun loadCabins(resortDao: ResortDao, centerName: String, cabinsList: MutableList<Cabin>) {
-    val cabinEntities = resortDao.getAllCabins().filter { it.centerName == centerName }
-    val bookingEntities = resortDao.getAllBookings()
-
-    val mappedCabins = cabinEntities.map { entity ->
-        val cabinBookings = bookingEntities
-            .filter { it.cabinId == entity.id }
-            .map { b ->
-                Booking(b.id, b.startDate, b.endDate, b.note, Color(b.colorArgb))
-            }
-        Cabin(
-            entity.id, entity.number, entity.photos, entity.hasShower, entity.hasToilet,
-            entity.roomsCount, entity.bedsCount, entity.comment, entity.price, entity.currency
-        ).apply {
-            bookings.addAll(cabinBookings)
-        }
-    }
-    cabinsList.clear()
-    cabinsList.addAll(mappedCabins)
 }

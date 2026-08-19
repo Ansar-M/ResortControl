@@ -101,5 +101,10 @@
     <string name="section_capacity">Capacity Requirements</string>
     <string name="section_amenities">Amenities</string>
     <string name="section_price">Price Range</string>
+    <string name="delete_center_title">Delete Center?</string>
+    <string name="delete_center_confirm">Are you sure you want to delete "%1$s" and all its cabins? This action cannot be undone.</string>
+    <string name="delete_cabin_title_dialog">Delete Cabin?</string>
+    <string name="delete_cabin_confirm">Are you sure you want to delete cabin "%1$s"?</string>
+    <string name="delete_button">Delete</string>
 
 </resources>

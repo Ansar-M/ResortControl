@@ -240,7 +240,31 @@ fun CabinListScreen(
 
                 Spacer(Modifier.weight(1f))
                 HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = Color(0xFFF1F1F1))
-                
+
+                val applicationLocales = AppCompatDelegate.getApplicationLocales()
+                val currentLocale = if (!applicationLocales.isEmpty) applicationLocales.get(0)?.language ?: "en" else "en"
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                    label = { 
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.language_section), modifier = Modifier.weight(1f))
+                            Text(
+                                text = if (currentLocale == "en") "EN" else "RU",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1B4332)
+                            )
+                        }
+                    },
+                    selected = false,
+                    onClick = {
+                        val nextLocale = if (currentLocale == "en") "ru" else "en"
+                        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(nextLocale))
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+
                 NavigationDrawerItem(
                     label = { Text(stringResource(R.string.sign_out), color = Color.Red) },
                     selected = false,
@@ -262,6 +286,11 @@ fun CabinListScreen(
             Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                 
                 val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
+                val columns = when (windowSizeClass.widthSizeClass) {
+                    WindowWidthSizeClass.Compact -> 1
+                    WindowWidthSizeClass.Medium -> 2
+                    else -> 3
+                }
 
                 if (isCompact) {
                     // COMPACT MOBILE HEADER
@@ -271,8 +300,10 @@ fun CabinListScreen(
                                 Icon(Icons.Default.Menu, contentDescription = null, tint = Color(0xFF1B4332))
                             }
                             Spacer(Modifier.width(8.dp))
-                            Text(activeCenter, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B4332), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Spacer(Modifier.weight(1f))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(activeCenter, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B4332), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(text = stringResource(R.string.property_count, filteredCabins.size, cabins.size), fontSize = 11.sp, color = Color.Gray, maxLines = 1)
+                            }
                             IconButton(onClick = { showAddDialog = true }) {
                                 Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFF1B4332))
                             }
@@ -357,27 +388,7 @@ fun CabinListScreen(
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(text = stringResource(R.string.property_count, filteredCabins.size, cabins.size), fontSize = 11.sp, color = Color.Gray, maxLines = 1)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        val applicationLocales = AppCompatDelegate.getApplicationLocales()
-                        val currentLocale = if (!applicationLocales.isEmpty) applicationLocales.get(0)?.language ?: "en" else "en"
-                        Button(
-                            onClick = {
-                                val nextLocale = if (currentLocale == "en") "ru" else "en"
-                                AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(nextLocale))
-                            },
-                            modifier = Modifier.height(36.dp).width(72.dp), shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B4332), contentColor = Color.White),
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text(text = if (currentLocale == "en") "EN / RU" else "RU / EN", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
                     }
-                }
-
-                val columns = when (windowSizeClass.widthSizeClass) {
-                    WindowWidthSizeClass.Compact -> 1
-                    WindowWidthSizeClass.Medium -> 2
-                    else -> 3
                 }
 
                 LazyVerticalGrid(
@@ -388,7 +399,21 @@ fun CabinListScreen(
                     verticalArrangement = Arrangement.spacedBy(if (isCompact) 16.dp else 32.dp)
                 ) {
                     items(filteredCabins) { cabin ->
-                        CabinGridCard(cabin = cabin, onClick = { onCabinClick(cabin) })
+                        Box {
+                            CabinGridCard(cabin = cabin, onClick = { onCabinClick(cabin) })
+                            Surface(
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(8.dp)
+                                    .size(32.dp),
+                                shape = CircleShape,
+                                color = Color.Black.copy(alpha = 0.4f)
+                            ) {
+                                IconButton(onClick = { cabinToDelete = cabin }) {
+                                    Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -663,6 +688,50 @@ fun CabinListScreen(
                 }
             )
         }
+    }
+
+    if (centerToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { centerToDelete = null },
+            title = { Text(stringResource(R.string.delete_center_title)) },
+            text = { Text(stringResource(R.string.delete_center_confirm, centerToDelete!!.name)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteCenter(centerToDelete!!)
+                        centerToDelete = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                ) { Text(stringResource(R.string.delete_button)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { centerToDelete = null }) {
+                    Text(stringResource(R.string.cancel_button))
+                }
+            }
+        )
+    }
+
+    if (cabinToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { cabinToDelete = null },
+            title = { Text(stringResource(R.string.delete_cabin_title_dialog)) },
+            text = { Text(stringResource(R.string.delete_cabin_confirm, cabinToDelete!!.number)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteCabin(cabinToDelete!!)
+                        cabinToDelete = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                ) { Text(stringResource(R.string.delete_button)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { cabinToDelete = null }) {
+                    Text(stringResource(R.string.cancel_button))
+                }
+            }
+        )
     }
 }
 

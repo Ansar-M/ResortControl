@@ -1,0 +1,3 @@
+- `[x]` Convert `ResortDao` to `abstract class` in `Database.kt`
+- `[x]` Verify KSP compilation (Static analysis passed, code structure fixed)
+- `[x]` Final build check

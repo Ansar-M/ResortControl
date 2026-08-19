@@ -4,6 +4,7 @@ import com.example.resortcontrol.BookingEntity
 import com.example.resortcontrol.CabinEntity
 import com.example.resortcontrol.CenterEntity
 import com.example.resortcontrol.ResortDao
+import android.util.Log
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 import com.google.firebase.firestore.toObjects
@@ -12,8 +13,10 @@ import kotlinx.coroutines.tasks.await
 class SyncRepository(private val resortDao: ResortDao) {
 
     private val db = Firebase.firestore
+    private val TAG = "SyncDebug"
 
     suspend fun syncWithCloud(userId: String) {
+        Log.d(TAG, "Starting syncWithCloud for user: $userId")
         // First, pull latest changes to avoid overwriting remote data with stale local data
         pullFromCloud(userId)
         
@@ -21,115 +24,156 @@ class SyncRepository(private val resortDao: ResortDao) {
         pushCenters(userId)
         pushCabins(userId)
         pushBookings(userId)
+        Log.d(TAG, "SyncWithCloud finished")
     }
 
     private suspend fun pushCenters(userId: String) {
         val unsynced = resortDao.getUnsyncedCenters()
+        Log.d(TAG, "Pushing ${unsynced.size} unsynced centers")
         for (center in unsynced) {
             try {
                 if (center.isDeleted) {
                     db.collection("users").document(userId)
                         .collection("centers").document(center.name).delete().await()
                     resortDao.hardDeleteCenter(center)
+                    Log.d(TAG, "Deleted center from cloud: ${center.name}")
                 } else {
                     db.collection("users").document(userId)
                         .collection("centers").document(center.name)
                         .set(center.copy(isSynced = true)).await()
                     resortDao.insertCenter(center.copy(isSynced = true))
+                    Log.d(TAG, "Uploaded center: ${center.name}")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "Failed to push center: ${center.name}", e)
             }
         }
     }
 
     private suspend fun pushCabins(userId: String) {
         val unsynced = resortDao.getUnsyncedCabins()
+        Log.d(TAG, "Pushing ${unsynced.size} unsynced cabins")
         for (cabin in unsynced) {
             try {
                 if (cabin.isDeleted) {
                     db.collection("users").document(userId)
                         .collection("cabins").document(cabin.id).delete().await()
                     resortDao.hardDeleteCabin(cabin)
+                    Log.d(TAG, "Deleted cabin from cloud: ${cabin.id}")
                 } else {
                     db.collection("users").document(userId)
                         .collection("cabins").document(cabin.id)
                         .set(cabin.copy(isSynced = true)).await()
                     resortDao.insertCabin(cabin.copy(isSynced = true))
+                    Log.d(TAG, "Uploaded cabin: ${cabin.id}")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "Failed to push cabin: ${cabin.id}", e)
             }
         }
     }
 
     private suspend fun pushBookings(userId: String) {
         val unsynced = resortDao.getUnsyncedBookings()
+        Log.d(TAG, "Pushing ${unsynced.size} unsynced bookings")
         for (booking in unsynced) {
             try {
                 if (booking.isDeleted) {
                     db.collection("users").document(userId)
                         .collection("bookings").document(booking.id).delete().await()
                     resortDao.hardDeleteBooking(booking)
+                    Log.d(TAG, "Deleted booking from cloud: ${booking.id}")
                 } else {
                     db.collection("users").document(userId)
                         .collection("bookings").document(booking.id)
                         .set(booking.copy(isSynced = true)).await()
                     resortDao.insertBooking(booking.copy(isSynced = true))
+                    Log.d(TAG, "Uploaded booking: ${booking.id}")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "Failed to push booking: ${booking.id}", e)
             }
         }
     }
 
     suspend fun pullFromCloud(userId: String) {
+        Log.d(TAG, "Starting pullFromCloud")
         try {
             // Pull Centers
             val remoteCenters = db.collection("users").document(userId)
                 .collection("centers").get().await().toObjects<CenterEntity>()
+            Log.d(TAG, "Fetched ${remoteCenters.size} centers from Firestore")
             mergeCenters(remoteCenters)
 
             // Pull Cabins
             val remoteCabins = db.collection("users").document(userId)
                 .collection("cabins").get().await().toObjects<CabinEntity>()
+            Log.d(TAG, "Fetched ${remoteCabins.size} cabins from Firestore")
             mergeCabins(remoteCabins)
 
             // Pull Bookings
             val remoteBookings = db.collection("users").document(userId)
                 .collection("bookings").get().await().toObjects<BookingEntity>()
+            Log.d(TAG, "Fetched ${remoteBookings.size} bookings from Firestore")
             mergeBookings(remoteBookings)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Error during pullFromCloud", e)
         }
     }
 
     private suspend fun mergeCenters(remote: List<CenterEntity>) {
-        val local = resortDao.getAllCenters()
+        val local = resortDao.getAllCentersWithDeleted()
         for (r in remote) {
             val l = local.find { it.name == r.name }
             if (l == null || r.lastModified > l.lastModified) {
                 resortDao.insertCenter(r.copy(isSynced = true))
+                Log.d(TAG, "Merged center: ${r.name}")
+            }
+        }
+        // Handle remote deletions: delete local if it was synced but is now missing from remote
+        val remoteNames = remote.map { it.name }.toSet()
+        for (l in local) {
+            if (l.isSynced && !l.isDeleted && l.name !in remoteNames) {
+                resortDao.hardDeleteCenter(l)
+                Log.d(TAG, "Deleted center locally (removed from cloud): ${l.name}")
             }
         }
     }
 
     private suspend fun mergeCabins(remote: List<CabinEntity>) {
-        val local = resortDao.getAllCabins()
+        val local = resortDao.getAllCabinsWithDeleted()
         for (r in remote) {
             val l = local.find { it.id == r.id }
             if (l == null || r.lastModified > l.lastModified) {
                 resortDao.insertCabin(r.copy(isSynced = true))
+                Log.d(TAG, "Merged cabin: ${r.id}")
+            }
+        }
+        // Handle remote deletions
+        val remoteIds = remote.map { it.id }.toSet()
+        for (l in local) {
+            if (l.isSynced && !l.isDeleted && l.id !in remoteIds) {
+                resortDao.hardDeleteCabin(l)
+                Log.d(TAG, "Deleted cabin locally (removed from cloud): ${l.id}")
             }
         }
     }
 
     private suspend fun mergeBookings(remote: List<BookingEntity>) {
-        val local = resortDao.getAllBookings()
+        val local = resortDao.getAllBookingsWithDeleted()
         for (r in remote) {
             val l = local.find { it.id == r.id }
             if (l == null || r.lastModified > l.lastModified) {
                 resortDao.insertBooking(r.copy(isSynced = true))
+                Log.d(TAG, "Merged booking: ${r.id}")
+            }
+        }
+        // Handle remote deletions
+        val remoteIds = remote.map { it.id }.toSet()
+        for (l in local) {
+            if (l.isSynced && !l.isDeleted && l.id !in remoteIds) {
+                resortDao.hardDeleteBooking(l)
+                Log.d(TAG, "Deleted booking locally (removed from cloud): ${l.id}")
             }
         }
     }
