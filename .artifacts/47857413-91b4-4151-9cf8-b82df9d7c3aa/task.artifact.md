@@ -1,4 +1,7 @@
-- [x] Add language toggle to `ModalDrawerSheet` in `CabinListScreen.kt`
-- [x] Add cabin count label to mobile header in `CabinListScreen.kt`
-- [x] Fix `activeCenter` persistence in `MainActivity.kt`
-- [x] Verify build with `./gradlew assembleDebug`
+- [x] Add `deleteImage` to `StorageRepository.kt`
+- [x] Update `SyncRepository.kt` to clean up Storage on deletion
+- [x] Add strings for "No photos" and sync status
+- [x] Implement sync status tracking in `MainActivity.kt`
+- [x] Add sync status icon to `CabinListScreen.kt`
+- [x] Add photo placeholder to `CabinDetailScreen.kt`
+- [x] Verify build and functionality

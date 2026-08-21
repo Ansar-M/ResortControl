@@ -1,19 +1,31 @@
-# Walkthrough - UI Consistency and Persistence Fixes
+# Walkthrough - Storage Cleanup, Sync Status, and UI Placeholders
 
-I have implemented the requested UI enhancements for mobile devices and fixed the bug where the active center would reset when switching languages.
+I have implemented three key improvements to make the app more reliable, efficient, and visually polished.
 
 ## Changes Made
 
-### UI Enhancements
+### 1. Storage Optimization & Cleanup
 
-#### [CabinListScreen.kt](file:///C:/Users/ocloc/AndroidStudioProjects/ResortControl2/app/src/main/java/com/example/resortcontrol/CabinListScreen.kt)
-- **Language Toggle in Drawer**: Added a new language switch item to the navigation drawer. This ensures that the language setting is accessible on both phones and tablets, maintaining a consistent interface.
-- **Mobile Property Count**: Added the "X of Y properties" label to the mobile header, placed directly under the active center name. This matches the information previously only available in the tablet layout.
+#### [StorageRepository.kt](file:///C:/Users/ocloc/AndroidStudioProjects/ResortControl2/app/src/main/java/com/example/resortcontrol/sync/StorageRepository.kt) & [SyncRepository.kt](file:///C:/Users/ocloc/AndroidStudioProjects/ResortControl2/app/src/main/java/com/example/resortcontrol/sync/SyncRepository.kt)
+- **Automatic Deletion**: When you delete a cabin, the app now automatically deletes all its associated photos from Firebase Storage. This prevents "orphan" files from cluttering your cloud storage and saves space.
+- **Improved Repository**: The sync repository now correctly orchestrates both Firestore document deletion and Storage file removal.
 
-### Bug Fixes
+### 2. Synchronization Transparency
 
 #### [MainActivity.kt](file:///C:/Users/ocloc/AndroidStudioProjects/ResortControl2/app/src/main/java/com/example/resortcontrol/MainActivity.kt)
-- **Active Center Persistence**: Improved the logic for setting the default active center. The app now checks if an `activeCenter` is already set before attempting to initialize a default one. This prevents the selection from resetting to "Recreation Center" during the temporary state changes that occur when switching languages.
+- **Status Tracking**: The app now actively monitors the background synchronization process (`WorkManager`). It distinguishes between "Syncing", "Pending", "Synced", and "Error" states.
+
+#### [CabinListScreen.kt](file:///C:/Users/ocloc/AndroidStudioProjects/ResortControl2/app/src/main/java/com/example/resortcontrol/CabinListScreen.kt)
+- **Sync Status Icon**: Added a cloud icon in the top header (both phone and tablet).
+    - **Green Cloud**: Everything is up to date in the cloud.
+    - **Orange Sync**: Data is currently being uploaded or downloaded.
+    - **Grey Queue**: Sync is scheduled and waiting for a connection.
+    - **Red Warning**: A synchronization error occurred (check your internet).
+
+### 3. Visual Polish
+
+#### [CabinDetailScreen.kt](file:///C:/Users/ocloc/AndroidStudioProjects/ResortControl2/app/src/main/java/com/example/resortcontrol/CabinDetailScreen.kt)
+- **Photo Placeholder**: If a cabin has no photos, it no longer shows an empty space. Instead, a clean "No photos added yet" card with an icon is displayed. This card is also clickable, allowing you to add the first photo directly.
 
 ## Verification Results
 
@@ -21,13 +33,9 @@ I have implemented the requested UI enhancements for mobile devices and fixed th
 - Ran `./gradlew assembleDebug`: **PASSED**.
 
 ### Manual Verification Path
-1. **Drawer**: Open the side menu on a phone and verify the "Language" item is present with the current locale (EN/RU).
-2. **Mobile Header**: Verify that "X of Y properties" is now visible below the center name on a phone screen.
-3. **Persistence**:
-    - Create a new center (e.g., "Forest Lodge").
-    - Select "Forest Lodge" as the active center.
-    - Change the language using the drawer or tablet button.
-    - Verify that "Forest Lodge" remains the active center after the language switch.
+1. **Sync Indicator**: Turn off Wi-Fi/Data and change a cabin's name. The cloud icon should change to grey (Pending) or red (Error). Turn Wi-Fi back on and watch it turn green (Synced).
+2. **Cleanup**: Delete a cabin that has photos. You can verify in the Firebase Console (Storage tab) that the files are removed shortly after.
+3. **Empty State**: Create a new cabin and open its details. Verify the "No photos" placeholder is visible and functional.
 
 > [!TIP]
-> The language toggle in the drawer also shows the currently selected language (e.g., "Language: EN") for better clarity.
+> The sync status icon is a great way to ensure your data is safely backed up before you log out or switch devices.

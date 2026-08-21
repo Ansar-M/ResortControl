@@ -7,10 +7,14 @@ import com.example.resortcontrol.ResortDao
 import android.util.Log
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
+import com.google.firebase.storage.storage
 import com.google.firebase.firestore.toObjects
 import kotlinx.coroutines.tasks.await
 
-class SyncRepository(private val resortDao: ResortDao) {
+class SyncRepository(
+    private val resortDao: ResortDao,
+    val storageRepository: StorageRepository = StorageRepository()
+) {
 
     private val db = Firebase.firestore
     private val TAG = "SyncDebug"
@@ -56,10 +60,15 @@ class SyncRepository(private val resortDao: ResortDao) {
         for (cabin in unsynced) {
             try {
                 if (cabin.isDeleted) {
+                    // Delete photos from Storage first
+                    for (photoUrl in cabin.photos) {
+                        storageRepository.deleteImage(photoUrl)
+                    }
+                    
                     db.collection("users").document(userId)
                         .collection("cabins").document(cabin.id).delete().await()
                     resortDao.hardDeleteCabin(cabin)
-                    Log.d(TAG, "Deleted cabin from cloud: ${cabin.id}")
+                    Log.d(TAG, "Deleted cabin and its photos from cloud: ${cabin.id}")
                 } else {
                     db.collection("users").document(userId)
                         .collection("cabins").document(cabin.id)
@@ -96,9 +105,9 @@ class SyncRepository(private val resortDao: ResortDao) {
         }
     }
 
-    suspend fun pullFromCloud(userId: String) {
+    suspend fun pullFromCloud(userId: String): Boolean {
         Log.d(TAG, "Starting pullFromCloud")
-        try {
+        return try {
             // Pull Centers
             val remoteCenters = db.collection("users").document(userId)
                 .collection("centers").get().await().toObjects<CenterEntity>()
@@ -116,8 +125,38 @@ class SyncRepository(private val resortDao: ResortDao) {
                 .collection("bookings").get().await().toObjects<BookingEntity>()
             Log.d(TAG, "Fetched ${remoteBookings.size} bookings from Firestore")
             mergeBookings(remoteBookings)
+            true
         } catch (e: Exception) {
             Log.e(TAG, "Error during pullFromCloud", e)
+            false
+        }
+    }
+
+    suspend fun clearAllCloudData(userId: String) {
+        Log.d(TAG, "Clearing all cloud data for user: $userId")
+        try {
+            // 1. Clear Firestore Documents
+            val collections = listOf("centers", "cabins", "bookings")
+            for (collectionName in collections) {
+                val snapshot = db.collection("users").document(userId)
+                    .collection(collectionName).get().await()
+                
+                for (doc in snapshot.documents) {
+                    doc.reference.delete().await()
+                }
+            }
+
+            // 2. Clear Firebase Storage Files
+            val storageRef = Firebase.storage.reference.child("users").child(userId).child("images")
+            val listResult = storageRef.listAll().await()
+            for (fileRef in listResult.items) {
+                fileRef.delete().await()
+            }
+            
+            Log.d(TAG, "Cloud data and storage cleared successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error clearing cloud data", e)
+            throw e
         }
     }
 

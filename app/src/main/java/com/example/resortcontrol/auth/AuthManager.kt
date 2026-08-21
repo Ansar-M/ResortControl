@@ -25,18 +25,31 @@ class AuthManager(private val context: Context) {
     val currentUser: StateFlow<UserAccount?> = _currentUser
 
     init {
-        auth.currentUser?.let { firebaseUser ->
-            _currentUser.value = UserAccount(
-                name = firebaseUser.displayName ?: "User",
-                email = firebaseUser.email ?: "",
-                photoUrl = firebaseUser.photoUrl?.toString()
-            )
+        auth.addAuthStateListener { firebaseAuth ->
+            val firebaseUser = firebaseAuth.currentUser
+            Log.d("AuthManager", "AuthState changed: ${firebaseUser?.email}")
+            if (firebaseUser != null) {
+                _currentUser.value = UserAccount(
+                    name = firebaseUser.displayName ?: "User",
+                    email = firebaseUser.email ?: "",
+                    photoUrl = firebaseUser.photoUrl?.toString()
+                )
+            } else {
+                _currentUser.value = null
+            }
         }
     }
 
     suspend fun signInWithGoogle(webClientId: String) {
         Log.d("AuthManager", "Starting sign in with Web Client ID: $webClientId")
         
+        // Clear credential state to ensure the account picker is always shown and allows switching
+        try {
+            credentialManager.clearCredentialState(ClearCredentialStateRequest())
+        } catch (e: Exception) {
+            Log.e("AuthManager", "Failed to clear credential state", e)
+        }
+
         val signInWithGoogleOption = GetSignInWithGoogleOption.Builder(serverClientId = webClientId)
             .build()
 

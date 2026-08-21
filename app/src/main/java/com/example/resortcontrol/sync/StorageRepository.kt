@@ -43,4 +43,14 @@ class StorageRepository {
             null
         }
     }
+
+    suspend fun deleteImage(url: String) {
+        if (!url.startsWith("http")) return
+        try {
+            val storageRef = storage.getReferenceFromUrl(url)
+            storageRef.delete().await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 }

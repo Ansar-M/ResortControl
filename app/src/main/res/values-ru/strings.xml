@@ -87,16 +87,28 @@
     <string name="check_out_label">Выезд:</string>
     <string name="note_label">Заметка</string>
     <string name="delete_booking_button">Удалить бронь</string>
+    <string name="clear_all_bookings">Очистить все брони</string>
+    <string name="clear_bookings_confirm">Вы уверены, что хотите удалить все бронирования для этого домика? Это действие нельзя отменить.</string>
 
     <!-- Account & Centers -->
     <string name="sign_in_google">Войти через Google</string>
     <string name="switch_account">Сменить аккаунт</string>
     <string name="sign_out">Выйти</string>
+    <string name="reset_all_data">Сбросить все данные</string>
+    <string name="reset_data_title">Сбросить все данные?</string>
+    <string name="reset_data_confirm">Это навсегда удалит все ваши базы, домики и бронирования с этого устройства и из облака. Это действие нельзя отменить.</string>
     <string name="my_centers">Мои базы отдыха</string>
     <string name="create_new_center">Создать новую базу</string>
+    <string name="no_centers_title">Базы отдыха не найдены</string>
+    <string name="no_centers_desc">Создайте свою первую базу, чтобы начать управление домиками</string>
+    <string name="no_photos">Фотографии ещё не добавлены</string>
+    <string name="sync_status_synced">Синхронизировано</string>
+    <string name="sync_status_syncing">Синхронизация&#8230;</string>
+    <string name="sync_status_error">Ошибка синхронизации</string>
     <string name="edit_center_name">Изменить название базы</string>
     <string name="center_name_hint">Введите название базы отдыха</string>
     <string name="active_label">Активно</string>
+    <string name="syncing_data">Синхронизация данных&#8230;</string>
     <string name="section_general">Общая информация</string>
     <string name="section_capacity">Требования к вместимости</string>
     <string name="section_amenities">Удобства</string>

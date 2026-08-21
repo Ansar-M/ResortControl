@@ -48,6 +48,8 @@ fun CabinDetailScreen(
     windowSizeClass: WindowSizeClass,
     onAddBooking: (Booking) -> Unit = {},
     onDeleteBooking: (Booking) -> Unit = {},
+    onDeleteAllBookings: (Cabin) -> Unit = {},
+    onDeletePhoto: (String) -> Unit = {},
     onUpdateCabin: (Cabin) -> Unit = {}
 ) {
     var currentCabin by remember { mutableStateOf(cabin) }
@@ -118,57 +120,77 @@ fun CabinDetailScreen(
         }
 
         val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
+        val cardWidth = if (isCompact) 260.dp else 300.dp
+        val cardHeight = if (isCompact) 180.dp else 200.dp
 
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(photos.size + 1) { index ->
-                val cardWidth = if (isCompact) 260.dp else 300.dp
-                val cardHeight = if (isCompact) 180.dp else 200.dp
-                if (index < photos.size) {
-                    val currentPhoto = photos[index]
-                    Box(
-                        modifier = Modifier
-                            .size(width = cardWidth, height = cardHeight)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFFF1F0EA))
-                    ) {
-                        AsyncImage(
-                            model = currentPhoto, 
-                            contentDescription = stringResource(R.string.photo_desc), 
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize().clickable { selectedPhotoForView = currentPhoto }
-                        )
-                        Surface(
-                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-                            shape = CircleShape,
-                            color = Color.Black.copy(alpha = 0.5f)
+        if (photos.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth()
+                    .height(cardHeight)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFF1F0EA))
+                    .clickable { photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(48.dp), tint = Color(0xFF1B4332).copy(alpha = 0.3f))
+                    Spacer(Modifier.height(8.dp))
+                    Text(stringResource(R.string.no_photos), color = Color.Gray, fontWeight = FontWeight.Medium)
+                }
+            }
+        } else {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(photos.size + 1) { index ->
+                    if (index < photos.size) {
+                        val currentPhoto = photos[index]
+                        Box(
+                            modifier = Modifier
+                                .size(width = cardWidth, height = cardHeight)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFFF1F0EA))
                         ) {
-                            IconButton(
-                                onClick = { 
-                                    photos.removeAt(index) 
-                                    val updated = currentCabin.copy(photos = photos.toList())
-                                    currentCabin = updated
-                                    onUpdateCabin(updated)
-                                },
-                                modifier = Modifier.size(32.dp)
-                            ) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp)) }
+                            AsyncImage(
+                                model = currentPhoto, 
+                                contentDescription = stringResource(R.string.photo_desc), 
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().clickable { selectedPhotoForView = currentPhoto }
+                            )
+                            Surface(
+                                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+                                shape = CircleShape,
+                                color = Color.Black.copy(alpha = 0.5f)
+                            ) {
+                                IconButton(
+                                    onClick = { 
+                                        val removedPhoto = photos.removeAt(index)
+                                        onDeletePhoto(removedPhoto)
+                                        val updated = currentCabin.copy(photos = photos.toList())
+                                        currentCabin = updated
+                                        onUpdateCabin(updated)
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) { Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp)) }
+                            }
                         }
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(width = cardWidth, height = cardHeight)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFFF1F0EA))
-                            .clickable { photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                        contentAlignment = Alignment.Center
-                    ) { 
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(32.dp), tint = Color(0xFF1B4332))
-                            Spacer(Modifier.height(8.dp))
-                            Text(stringResource(R.string.add_photo_desc), color = Color(0xFF1B4332), fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(width = cardWidth, height = cardHeight)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFFF1F0EA))
+                                .clickable { photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                            contentAlignment = Alignment.Center
+                        ) { 
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(32.dp), tint = Color(0xFF1B4332))
+                                Spacer(Modifier.height(8.dp))
+                                Text(stringResource(R.string.add_photo_desc), color = Color(0xFF1B4332), fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                            }
                         }
                     }
                 }
@@ -215,7 +237,8 @@ fun CabinDetailScreen(
         BookingTimelineVisualizer(
             cabin = currentCabin,
             onAddBooking = onAddBooking,
-            onDeleteBooking = onDeleteBooking
+            onDeleteBooking = onDeleteBooking,
+            onDeleteAllBookings = { onDeleteAllBookings(currentCabin) }
         )
         Spacer(modifier = Modifier.height(32.dp))
     }

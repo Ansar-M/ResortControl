@@ -21,8 +21,8 @@ class SyncWorker(
         
         val database = AppDatabase.getDatabase(applicationContext)
         val resortDao = database.resortDao()
-        val syncRepository = SyncRepository(resortDao)
         val storageRepository = StorageRepository()
+        val syncRepository = SyncRepository(resortDao, storageRepository)
         val photosDir = File(applicationContext.filesDir, "cabin_photos")
         if (!photosDir.exists()) photosDir.mkdirs()
 

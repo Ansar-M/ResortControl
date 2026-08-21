@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,10 +55,12 @@ fun getDayInfo(currentDate: LocalDate, bookings: List<Booking>): DayInfo {
 fun BookingTimelineVisualizer(
     cabin: Cabin,
     onAddBooking: (Booking) -> Unit = {},
-    onDeleteBooking: (Booking) -> Unit = {}
+    onDeleteBooking: (Booking) -> Unit = {},
+    onDeleteAllBookings: () -> Unit = {}
 ) {
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var showDialog by remember { mutableStateOf(false) }
+    var showClearConfirm by remember { mutableStateOf(false) }
     var newBookingNote by remember { mutableStateOf("") }
     var selectedDayInfo by remember { mutableStateOf<DayInfo?>(null) }
     val bookings = cabin.bookings
@@ -69,7 +72,20 @@ fun BookingTimelineVisualizer(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(stringResource(R.string.calendar_title), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            IconButton(onClick = { showDialog = true }) { Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(R.string.add_booking_desc)) }
+            Row {
+                if (bookings.isNotEmpty()) {
+                    IconButton(onClick = { showClearConfirm = true }) {
+                        Icon(
+                            imageVector = Icons.Default.DeleteSweep,
+                            contentDescription = stringResource(R.string.clear_all_bookings),
+                            tint = Color.Red.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+                IconButton(onClick = { showDialog = true }) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(R.string.add_booking_desc))
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -134,22 +150,8 @@ fun BookingTimelineVisualizer(
             val configuration = Configuration(LocalConfiguration.current).apply { setLocale(appLocale) }
 
             CompositionLocalProvider(LocalConfiguration provides configuration) {
-                AlertDialog(
+                DatePickerDialog(
                     onDismissRequest = { showDialog = false },
-                    modifier = Modifier.fillMaxHeight(0.8f),
-                    title = { Text(stringResource(R.string.new_booking_title)) },
-                    text = {
-                        Column {
-                            OutlinedTextField(
-                                value = newBookingNote, onValueChange = { newBookingNote = it },
-                                label = { Text(stringResource(R.string.booking_note_label)) }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-                            )
-                            if (errorMessage != null) {
-                                Text(text = errorMessage!!, color = Color.Red, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
-                            }
-                            DateRangePicker(state = dateRangePickerState, modifier = Modifier.weight(1f))
-                        }
-                    },
                     confirmButton = {
                         val busyError = stringResource(R.string.dates_busy_error)
                         TextButton(
@@ -166,16 +168,10 @@ fun BookingTimelineVisualizer(
                                     } else {
                                         errorMessage = null
                                         val colors = listOf(Color(0xFF42A5F5), Color(0xFFFFA726), Color(0xFF66BB6A), Color(0xFFAB47BC))
-
-// Находим цвета броней, которые стоят встык с нашей
                                         val adjacentColors = bookings.filter {
                                             it.endDate == startDate || it.startDate == endDate
                                         }.map { it.color }
-
-// Оставляем только те цвета, которых нет у соседей
                                         val safeColors = colors.filter { it !in adjacentColors }
-
-// Выбираем безопасный цвет (если безопасных вдруг нет, берем любой)
                                         val finalColor = if (safeColors.isNotEmpty()) safeColors.random() else colors.random()
 
                                         val newBooking = Booking(
@@ -196,7 +192,45 @@ fun BookingTimelineVisualizer(
                         ) { Text(stringResource(R.string.add_button)) }
                     },
                     dismissButton = { TextButton(onClick = { showDialog = false }) { Text(stringResource(R.string.cancel_button)) } }
-                )
+                ) {
+                    Column {
+                        OutlinedTextField(
+                            value = newBookingNote, 
+                            onValueChange = { newBookingNote = it },
+                            label = { Text(stringResource(R.string.booking_note_label)) }, 
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
+                            singleLine = true
+                        )
+                        if (errorMessage != null) {
+                            Text(
+                                text = errorMessage!!, 
+                                color = Color.Red, 
+                                fontWeight = FontWeight.Bold, 
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                                fontSize = 12.sp
+                            )
+                        }
+                        DateRangePicker(
+                            state = dateRangePickerState,
+                            modifier = Modifier.weight(1f),
+                            title = {
+                                Text(
+                                    text = stringResource(R.string.new_booking_title),
+                                    modifier = Modifier.padding(start = 24.dp, top = 8.dp)
+                                )
+                            },
+                            headline = {
+                                DateRangePickerDefaults.DateRangePickerHeadline(
+                                    selectedStartDateMillis = dateRangePickerState.selectedStartDateMillis,
+                                    selectedEndDateMillis = dateRangePickerState.selectedEndDateMillis,
+                                    displayMode = dateRangePickerState.displayMode,
+                                    dateFormatter = DatePickerDefaults.dateFormatter(),
+                                    modifier = Modifier.padding(start = 24.dp)
+                                )
+                            }
+                        )
+                    }
+                }
             }
         }
 
@@ -233,6 +267,29 @@ fun BookingTimelineVisualizer(
                     }
                 },
                 confirmButton = { TextButton(onClick = { selectedDayInfo = null }) { Text(stringResource(R.string.close_button)) } }
+            )
+        }
+
+        if (showClearConfirm) {
+            AlertDialog(
+                onDismissRequest = { showClearConfirm = false },
+                title = { Text(stringResource(R.string.clear_all_bookings)) },
+                text = { Text(stringResource(R.string.clear_bookings_confirm)) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onDeleteAllBookings()
+                            bookings.clear()
+                            showClearConfirm = false
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                    ) { Text(stringResource(R.string.delete_button)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showClearConfirm = false }) {
+                        Text(stringResource(R.string.cancel_button))
+                    }
+                }
             )
         }
     }

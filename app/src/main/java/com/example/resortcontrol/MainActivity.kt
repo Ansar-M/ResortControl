@@ -15,9 +15,12 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import androidx.work.*
 import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
@@ -31,8 +34,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import java.util.concurrent.TimeUnit
 import java.time.LocalDate
+import androidx.lifecycle.asFlow
 
 class MainActivity : AppCompatActivity() {
 
@@ -53,29 +59,55 @@ class MainActivity : AppCompatActivity() {
                     val scope = rememberCoroutineScope()
                     val user by authManager.currentUser.collectAsState()
                     val syncRepository = remember { SyncRepository(resortDao) }
+                    var isInitialSyncing by remember { mutableStateOf(false) }
+
+                    val workInfos by WorkManager.getInstance(applicationContext)
+                        .getWorkInfosForUniqueWorkLiveData("CloudSync")
+                        .asFlow()
+                        .collectAsState(initial = emptyList())
+                    
+                    val syncStatus = remember(workInfos) {
+                        val info = workInfos.firstOrNull()
+                        when (info?.state) {
+                            WorkInfo.State.RUNNING -> "SYNCING"
+                            WorkInfo.State.ENQUEUED -> "PENDING"
+                            WorkInfo.State.FAILED -> "ERROR"
+                            WorkInfo.State.BLOCKED -> "PENDING"
+                            else -> "IDLE"
+                        }
+                    }
                     
                     LaunchedEffect(user) {
                         android.util.Log.d("MainActivity", "User state changed: ${user?.email}")
                         user?.let {
+                            isInitialSyncing = true
                             // Trigger immediate pull from cloud when user is detected
                             scope.launch {
-                                syncRepository.pullFromCloud(Firebase.auth.currentUser?.uid ?: "")
+                                try {
+                                    syncRepository.pullFromCloud(Firebase.auth.currentUser?.uid ?: "")
+                                } finally {
+                                    isInitialSyncing = false
+                                }
                             }
                         }
                     }
 
                     var isSigningIn by remember { mutableStateOf(false) }
+                    var signInError by remember { mutableStateOf<String?>(null) }
 
                     if (user == null) {
                         SignInScreen(
                             isSigningIn = isSigningIn,
+                            errorMessage = signInError,
                             onSignInClick = {
                                 isSigningIn = true
+                                signInError = null
                                 scope.launch {
                                     try {
                                         authManager.signInWithGoogle(webClientId)
                                     } catch (e: Exception) {
                                         android.util.Log.e("MainActivity", "Sign in failed", e)
+                                        signInError = e.localizedMessage ?: "Unknown error"
                                     } finally {
                                         isSigningIn = false
                                     }
@@ -91,22 +123,14 @@ class MainActivity : AppCompatActivity() {
                         var activeCenter by rememberSaveable { mutableStateOf("") }
                         
                         val centers = remember(centerEntities, activeCenter) {
-                            if (centerEntities.isEmpty()) {
-                                listOf(Center("Recreation Center", true))
-                            } else {
-                                centerEntities.map { Center(it.name, it.name == activeCenter || (activeCenter == "" && centerEntities.first().name == it.name)) }
-                            }
+                            centerEntities.map { Center(it.name, it.name == activeCenter || (activeCenter == "" && centerEntities.first().name == it.name)) }
                         }
                         
                         // Set default active center if none selected
-                        LaunchedEffect(centerEntities) {
-                            if (activeCenter == "") {
+                        LaunchedEffect(centerEntities, isInitialSyncing) {
+                            if (!isInitialSyncing && activeCenter == "") {
                                 if (centerEntities.isNotEmpty()) {
                                     activeCenter = centerEntities.first().name
-                                } else {
-                                    // Create default if no centers exist
-                                    resortDao.insertCenter(CenterEntity("Recreation Center"))
-                                    activeCenter = "Recreation Center"
                                 }
                             }
                         }
@@ -136,13 +160,22 @@ class MainActivity : AppCompatActivity() {
                         var selectedCabinId by rememberSaveable { mutableStateOf<String?>(null) }
                         val selectedCabin = cabins.find { it.id == selectedCabinId }
 
-                        if (selectedCabinId == null || selectedCabin == null) {
+                        if (isInitialSyncing) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    CircularProgressIndicator(color = Color(0xFF1B4332))
+                                    Spacer(Modifier.height(16.dp))
+                                    Text(stringResource(R.string.syncing_data), color = Color.Gray, fontSize = 14.sp)
+                                }
+                            }
+                        } else if (selectedCabinId == null || selectedCabin == null) {
                             CabinListScreen(
                                 cabins = cabins,
                                 user = user!!,
                                 centers = centers,
                                 activeCenter = activeCenter,
                                 windowSizeClass = windowSizeClass,
+                                syncStatus = syncStatus,
                                 onCenterSelect = { center ->
                                     activeCenter = center.name
                                 },
@@ -170,9 +203,45 @@ class MainActivity : AppCompatActivity() {
                                         scheduleSync()
                                     }
                                 },
+                                onResetAllData = {
+                                    scope.launch {
+                                        try {
+                                            isInitialSyncing = true
+                                            val uid = Firebase.auth.currentUser?.uid ?: ""
+                                            if (uid.isNotEmpty()) {
+                                                syncRepository.clearAllCloudData(uid)
+                                            }
+                                            withContext(Dispatchers.IO) {
+                                                database.clearAllTables()
+                                            }
+                                            activeCenter = ""
+                                            selectedCabinId = null
+                                            android.util.Log.d("MainActivity", "All data reset successfully")
+                                        } catch (e: Exception) {
+                                            android.util.Log.e("MainActivity", "Failed to reset all data", e)
+                                        } finally {
+                                            isInitialSyncing = false
+                                        }
+                                    }
+                                },
                                 onSignOut = {
                                     scope.launch {
-                                        authManager.signOut()
+                                        try {
+                                            android.util.Log.d("MainActivity", "User requested sign out")
+                                            authManager.signOut()
+                                            
+                                            // CRITICAL: Clear all local tables on logout to prevent data leak 
+                                            // and ensure clean state for the next user.
+                                            withContext(Dispatchers.IO) {
+                                                database.clearAllTables()
+                                            }
+                                            
+                                            activeCenter = ""
+                                            selectedCabinId = null
+                                            android.util.Log.d("MainActivity", "Sign out complete: user cleared and DB wiped")
+                                        } catch (e: Exception) {
+                                            android.util.Log.e("MainActivity", "Error during sign out process", e)
+                                        }
                                     }
                                 },
                                 onCabinClick = { clickedCabin ->
@@ -199,14 +268,24 @@ class MainActivity : AppCompatActivity() {
                                 }
                             )
                         } else {
-                            Column {
+                            Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    TextButton(onClick = { selectedCabinId = null }) {
-                                        Text("< ${stringResource(R.string.cancel_button)}", fontSize = 16.sp)
+                                    IconButton(
+                                        onClick = { selectedCabinId = null },
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .background(Color(0xFF1B4332).copy(alpha = 0.08f), CircleShape)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                            contentDescription = "Back",
+                                            tint = Color(0xFF1B4332),
+                                            modifier = Modifier.size(20.dp)
+                                        )
                                     }
                                     
                                     // Local Sync Status Indicator
@@ -239,6 +318,17 @@ class MainActivity : AppCompatActivity() {
                                             resortDao.softDeleteBooking(booking.id)
                                             // Handle cloud deletion if needed
                                             scheduleSync()
+                                        }
+                                    },
+                                    onDeleteAllBookings = { cabin ->
+                                        scope.launch {
+                                            resortDao.markBookingsDeletedByCabin(cabin.id, System.currentTimeMillis())
+                                            scheduleSync()
+                                        }
+                                    },
+                                    onDeletePhoto = { photoUrl ->
+                                        scope.launch {
+                                            syncRepository.storageRepository.deleteImage(photoUrl)
                                         }
                                     },
                                     onUpdateCabin = { updatedCabin ->
@@ -282,9 +372,9 @@ class MainActivity : AppCompatActivity() {
 }
 
 @Composable
-fun SignInScreen(isSigningIn: Boolean, onSignInClick: () -> Unit) {
+fun SignInScreen(isSigningIn: Boolean, errorMessage: String?, onSignInClick: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
             Text(
                 text = "ResortControl",
                 fontSize = 32.sp,
@@ -293,6 +383,24 @@ fun SignInScreen(isSigningIn: Boolean, onSignInClick: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             Text(text = "Property management made easy", color = Color.Gray)
+            
+            if (errorMessage != null) {
+                Spacer(Modifier.height(16.dp))
+                Surface(
+                    color = Color.Red.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth(0.8f)
+                ) {
+                    Text(
+                        text = errorMessage,
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(12.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            }
+
             Spacer(Modifier.height(48.dp))
             
             if (isSigningIn) {
