@@ -43,7 +43,8 @@ import androidx.lifecycle.asFlow
 class MainActivity : AppCompatActivity() {
 
     private lateinit var authManager: AuthManager
-    private val webClientId = "595010678626-9hn7s3seimgi1gcsjmge1ieoa4ef76i5.apps.googleusercontent.com" // Replace with real ID
+    // TODO: Replace with your actual Web Client ID from Firebase Console
+    private val webClientId = "595010678626-9hn7s3seimgi1gcsjmge1ieoa4ef76i5.apps.googleusercontent.com" 
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
