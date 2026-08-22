@@ -3,6 +3,7 @@ package com.example.resortcontrol.sync
 import com.example.resortcontrol.BookingEntity
 import com.example.resortcontrol.CabinEntity
 import com.example.resortcontrol.CenterEntity
+import com.example.resortcontrol.PendingDeletionEntity
 import com.example.resortcontrol.ResortDao
 import android.util.Log
 import com.google.firebase.Firebase
@@ -21,14 +22,36 @@ class SyncRepository(
 
     suspend fun syncWithCloud(userId: String) {
         Log.d(TAG, "Starting syncWithCloud for user: $userId")
-        // First, pull latest changes to avoid overwriting remote data with stale local data
+        
+        // 0. Process any pending image deletions from Storage
+        processPendingDeletions()
+
+        // 1. Pull latest changes
         pullFromCloud(userId)
         
-        // Then, push local changes (including deletions)
-        pushCenters(userId)
-        pushCabins(userId)
+        // 2. Push local changes
+        // ORDER MATTERS: Push child entities first, then parents to handle soft deletions correctly
         pushBookings(userId)
+        pushCabins(userId)
+        pushCenters(userId)
+        
         Log.d(TAG, "SyncWithCloud finished")
+    }
+
+    private suspend fun processPendingDeletions() {
+        val pending = resortDao.getAllPendingDeletions()
+        if (pending.isEmpty()) return
+        
+        Log.d(TAG, "Processing ${pending.size} pending image deletions")
+        for (item in pending) {
+            try {
+                storageRepository.deleteImage(item.url)
+                resortDao.deletePendingDeletion(item)
+                Log.d(TAG, "Successfully deleted pending image: ${item.url}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete pending image: ${item.url}", e)
+            }
+        }
     }
 
     private suspend fun pushCenters(userId: String) {
@@ -60,9 +83,9 @@ class SyncRepository(
         for (cabin in unsynced) {
             try {
                 if (cabin.isDeleted) {
-                    // Delete photos from Storage first
+                    // Queue photos for deletion from Storage
                     for (photoUrl in cabin.photos) {
-                        storageRepository.deleteImage(photoUrl)
+                        resortDao.insertPendingDeletion(PendingDeletionEntity(photoUrl))
                     }
                     
                     db.collection("users").document(userId)

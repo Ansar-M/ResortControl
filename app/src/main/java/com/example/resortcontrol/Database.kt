@@ -22,8 +22,7 @@ data class CenterEntity(
         ForeignKey(
             entity = CenterEntity::class,
             parentColumns = ["name"],
-            childColumns = ["centerName"],
-            onDelete = ForeignKey.CASCADE
+            childColumns = ["centerName"]
         )
     ],
     indices = [Index(value = ["centerName"])]
@@ -45,14 +44,12 @@ data class CabinEntity(
     val isDeleted: Boolean = false
 )
 
-@Entity(
-    tableName = "bookings",
+@Entity(tableName = "bookings",
     foreignKeys = [
         ForeignKey(
             entity = CabinEntity::class,
             parentColumns = ["id"],
-            childColumns = ["cabinId"],
-            onDelete = ForeignKey.CASCADE
+            childColumns = ["cabinId"]
         )
     ],
     indices = [Index(value = ["cabinId"])]
@@ -67,6 +64,11 @@ data class BookingEntity(
     val lastModified: Long = System.currentTimeMillis(),
     val isSynced: Boolean = false,
     val isDeleted: Boolean = false
+)
+
+@Entity(tableName = "pending_deletions")
+data class PendingDeletionEntity(
+    @PrimaryKey val url: String = ""
 )
 
 // --- CONVERTERS ---
@@ -89,7 +91,7 @@ class Converters {
 
 @Dao
 abstract class ResortDao {
-    @Query("SELECT * FROM centers WHERE isDeleted = 0")
+    @Query("SELECT * FROM centers WHERE isDeleted = 0 ORDER BY name ASC")
     abstract fun getAllCentersFlow(): Flow<List<CenterEntity>>
 
     @Query("SELECT * FROM centers")
@@ -119,10 +121,10 @@ abstract class ResortDao {
         return 1
     }
 
-    @Query("SELECT * FROM cabins WHERE isDeleted = 0")
+    @Query("SELECT * FROM cabins WHERE isDeleted = 0 ORDER BY number ASC")
     abstract fun getAllCabinsFlow(): Flow<List<CabinEntity>>
 
-    @Query("SELECT * FROM cabins WHERE isDeleted = 0")
+    @Query("SELECT * FROM cabins WHERE isDeleted = 0 ORDER BY number ASC")
     abstract suspend fun getAllCabins(): List<CabinEntity>
 
     @Query("SELECT * FROM cabins")
@@ -137,7 +139,7 @@ abstract class ResortDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertCabin(cabin: CabinEntity): Long
 
-    @Query("SELECT * FROM bookings WHERE isDeleted = 0")
+    @Query("SELECT * FROM bookings WHERE isDeleted = 0 ORDER BY startDate ASC")
     abstract fun getAllBookingsFlow(): Flow<List<BookingEntity>>
 
     @Query("SELECT * FROM bookings")
@@ -198,13 +200,22 @@ abstract class ResortDao {
 
     @Delete
     abstract suspend fun hardDeleteCenter(center: CenterEntity): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    abstract suspend fun insertPendingDeletion(deletion: PendingDeletionEntity)
+
+    @Query("SELECT * FROM pending_deletions")
+    abstract suspend fun getAllPendingDeletions(): List<PendingDeletionEntity>
+
+    @Delete
+    abstract suspend fun deletePendingDeletion(deletion: PendingDeletionEntity)
 }
 
 // --- DATABASE CLASS ---
 
 @Database(
-    entities = [CenterEntity::class, CabinEntity::class, BookingEntity::class],
-    version = 4,
+    entities = [CenterEntity::class, CabinEntity::class, BookingEntity::class, PendingDeletionEntity::class],
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

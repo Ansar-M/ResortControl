@@ -445,7 +445,7 @@ fun CabinListScreen(
                         horizontalArrangement = Arrangement.spacedBy(if (isCompact) 16.dp else 32.dp),
                         verticalArrangement = Arrangement.spacedBy(if (isCompact) 16.dp else 32.dp)
                     ) {
-                        items(filteredCabins) { cabin ->
+                        items(filteredCabins, key = { it.id }) { cabin ->
                             Box {
                                 CabinGridCard(cabin = cabin, onClick = { onCabinClick(cabin) })
                                 Surface(
@@ -870,17 +870,28 @@ fun CabinGridCard(cabin: Cabin, onClick: () -> Unit) {
                 val today = LocalDate.now()
                 val formatter = DateTimeFormatter.ofPattern("dd.MM")
                 val currentBooking = cabin.bookings.find { !today.isBefore(it.startDate) && !today.isAfter(it.endDate) }
-                val nextBooking = cabin.bookings.filter { it.startDate.isAfter(today) }.minByOrNull { it.startDate }
-
+                
                 val (statusText, statusColor) = when {
                     currentBooking != null -> {
-                        stringResource(R.string.status_unavailable_until, currentBooking.endDate.format(formatter)) to Color(0xFFC96A47)
-                    }
-                    nextBooking != null -> {
-                        stringResource(R.string.status_available_until, nextBooking.startDate.format(formatter)) to Color(0xFF4CAF50)
+                        // Find the real end date by following consecutive bookings
+                        var finalEndDate = currentBooking.endDate
+                        while (true) {
+                            val nextInChain = cabin.bookings.find { it.startDate == finalEndDate }
+                            if (nextInChain != null) {
+                                finalEndDate = nextInChain.endDate
+                            } else {
+                                break
+                            }
+                        }
+                        stringResource(R.string.status_unavailable_until, finalEndDate.format(formatter)) to Color(0xFFC96A47)
                     }
                     else -> {
-                        stringResource(R.string.status_available) to Color(0xFF4CAF50)
+                        val nextBooking = cabin.bookings.filter { it.startDate.isAfter(today) }.minByOrNull { it.startDate }
+                        if (nextBooking != null) {
+                            stringResource(R.string.status_available_until, nextBooking.startDate.format(formatter)) to Color(0xFF4CAF50)
+                        } else {
+                            stringResource(R.string.status_available) to Color(0xFF4CAF50)
+                        }
                     }
                 }
 

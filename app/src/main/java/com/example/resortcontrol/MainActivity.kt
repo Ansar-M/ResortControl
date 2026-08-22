@@ -329,7 +329,8 @@ class MainActivity : AppCompatActivity() {
                                     },
                                     onDeletePhoto = { photoUrl ->
                                         scope.launch {
-                                            syncRepository.storageRepository.deleteImage(photoUrl)
+                                            resortDao.insertPendingDeletion(PendingDeletionEntity(photoUrl))
+                                            scheduleSync()
                                         }
                                     },
                                     onUpdateCabin = { updatedCabin ->
