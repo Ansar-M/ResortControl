@@ -395,8 +395,6 @@ fun SignInScreen(isSigningIn: Boolean, errorMessage: String?, onSignInClick: () 
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1B4332)
             )
-            Spacer(Modifier.height(8.dp))
-            Text(text = "Property management made easy", color = Color.Gray)
             
             if (errorMessage != null) {
                 Spacer(Modifier.height(16.dp))

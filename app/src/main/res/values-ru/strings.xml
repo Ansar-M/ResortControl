@@ -1,7 +1,6 @@
 <resources>
     <string name="app_name">ResortControl</string>
     <string name="header_title">База отдыха</string>
-    <string name="header_subtitle">Админ — Управление имуществом</string>
     <string name="search_placeholder">Поиск объектов&#8230;</string>
     <string name="filters_button">Фильтры</string>
     <string name="property_count">%1$d из %2$d объектов</string>

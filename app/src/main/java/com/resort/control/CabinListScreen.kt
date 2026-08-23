@@ -389,7 +389,6 @@ fun CabinListScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(0.5f, fill = false)) {
                                 Text(text = stringResource(R.string.header_title), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B4332), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(text = stringResource(R.string.header_subtitle), fontSize = 9.sp, color = Color(0xFF9E9E9E), fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             BasicTextField(
