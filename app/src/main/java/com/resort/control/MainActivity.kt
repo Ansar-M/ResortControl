@@ -85,7 +85,13 @@ class MainActivity : AppCompatActivity() {
                             // Trigger immediate pull from cloud when user is detected
                             scope.launch {
                                 try {
-                                    syncRepository.pullFromCloud(Firebase.auth.currentUser?.uid ?: "")
+                                    val result = syncRepository.pullFromCloud(Firebase.auth.currentUser?.uid ?: "")
+                                    if (!result) {
+                                        android.widget.Toast.makeText(applicationContext, "Ошибка загрузки данных из облака", android.widget.Toast.LENGTH_LONG).show()
+                                    }
+                                } catch (e: Exception) {
+                                    android.util.Log.e("MainActivity", "Initial pull failed", e)
+                                    android.widget.Toast.makeText(applicationContext, "Сбой синхронизации: ${e.localizedMessage}", android.widget.Toast.LENGTH_LONG).show()
                                 } finally {
                                     isInitialSyncing = false
                                 }

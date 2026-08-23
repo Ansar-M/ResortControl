@@ -129,28 +129,35 @@ class SyncRepository(
     }
 
     suspend fun pullFromCloud(userId: String): Boolean {
-        Log.d(TAG, "Starting pullFromCloud")
+        if (userId.isEmpty()) {
+            Log.e(TAG, "pullFromCloud aborted: userId is empty")
+            return false
+        }
+        Log.d(TAG, "Starting pullFromCloud for UID: $userId")
         return try {
             // Pull Centers
-            val remoteCenters = db.collection("users").document(userId)
-                .collection("centers").get().await().toObjects<CenterEntity>()
-            Log.d(TAG, "Fetched ${remoteCenters.size} centers from Firestore")
+            val centersSnapshot = db.collection("users").document(userId)
+                .collection("centers").get().await()
+            val remoteCenters = centersSnapshot.toObjects<CenterEntity>()
+            Log.d(TAG, "Fetched ${remoteCenters.size} centers (Raw size: ${centersSnapshot.size()})")
             mergeCenters(remoteCenters)
 
             // Pull Cabins
-            val remoteCabins = db.collection("users").document(userId)
-                .collection("cabins").get().await().toObjects<CabinEntity>()
-            Log.d(TAG, "Fetched ${remoteCabins.size} cabins from Firestore")
+            val cabinsSnapshot = db.collection("users").document(userId)
+                .collection("cabins").get().await()
+            val remoteCabins = cabinsSnapshot.toObjects<CabinEntity>()
+            Log.d(TAG, "Fetched ${remoteCabins.size} cabins (Raw size: ${cabinsSnapshot.size()})")
             mergeCabins(remoteCabins)
 
             // Pull Bookings
-            val remoteBookings = db.collection("users").document(userId)
-                .collection("bookings").get().await().toObjects<BookingEntity>()
-            Log.d(TAG, "Fetched ${remoteBookings.size} bookings from Firestore")
+            val bookingsSnapshot = db.collection("users").document(userId)
+                .collection("bookings").get().await()
+            val remoteBookings = bookingsSnapshot.toObjects<BookingEntity>()
+            Log.d(TAG, "Fetched ${remoteBookings.size} bookings (Raw size: ${bookingsSnapshot.size()})")
             mergeBookings(remoteBookings)
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Error during pullFromCloud", e)
+            Log.e(TAG, "Error during pullFromCloud: ${e.message}", e)
             false
         }
     }
