@@ -26,14 +26,14 @@ class SyncRepository(
         // 0. Process any pending image deletions from Storage
         processPendingDeletions()
 
-        // 1. Pull latest changes
-        pullFromCloud(userId)
-        
-        // 2. Push local changes
+        // 1. Push local changes FIRST to ensure deletions/updates reach the cloud before we pull
         // ORDER MATTERS: Push child entities first, then parents to handle soft deletions correctly
         pushBookings(userId)
         pushCabins(userId)
         pushCenters(userId)
+
+        // 2. Pull latest changes from the cloud
+        pullFromCloud(userId)
         
         Log.d(TAG, "SyncWithCloud finished")
     }
@@ -194,7 +194,9 @@ class SyncRepository(
         val local = resortDao.getAllCentersWithDeleted()
         for (r in remote) {
             val l = local.find { it.name == r.name }
-            if (l == null || r.lastModified > l.lastModified) {
+            // Only merge if local doesn't exist or if remote is newer AND local is already synced
+            // This prevents overwriting pending local changes with old cloud data
+            if (l == null || (r.lastModified > l.lastModified && l.isSynced)) {
                 resortDao.insertCenter(r.copy(isSynced = true))
                 Log.d(TAG, "Merged center: ${r.name}")
             }
@@ -217,7 +219,7 @@ class SyncRepository(
         val local = resortDao.getAllCabinsWithDeleted()
         for (r in remote) {
             val l = local.find { it.id == r.id }
-            if (l == null || r.lastModified > l.lastModified) {
+            if (l == null || (r.lastModified > l.lastModified && l.isSynced)) {
                 resortDao.insertCabin(r.copy(isSynced = true))
                 Log.d(TAG, "Merged cabin: ${r.id}")
             }
@@ -240,7 +242,7 @@ class SyncRepository(
         val local = resortDao.getAllBookingsWithDeleted()
         for (r in remote) {
             val l = local.find { it.id == r.id }
-            if (l == null || r.lastModified > l.lastModified) {
+            if (l == null || (r.lastModified > l.lastModified && l.isSynced)) {
                 resortDao.insertBooking(r.copy(isSynced = true))
                 Log.d(TAG, "Merged booking: ${r.id}")
             }
