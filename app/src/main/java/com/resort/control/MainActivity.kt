@@ -183,6 +183,10 @@ class MainActivity : AppCompatActivity() {
                                 activeCenter = activeCenter,
                                 windowSizeClass = windowSizeClass,
                                 syncStatus = syncStatus,
+                                onRefresh = {
+                                    android.util.Log.d("MainActivity", "Manual refresh triggered")
+                                    scheduleSync()
+                                },
                                 onCenterSelect = { center ->
                                     activeCenter = center.name
                                 },

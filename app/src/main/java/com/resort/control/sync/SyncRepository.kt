@@ -199,12 +199,16 @@ class SyncRepository(
                 Log.d(TAG, "Merged center: ${r.name}")
             }
         }
-        // Handle remote deletions: delete local if it was synced but is now missing from remote
+        // Handle remote deletions
         val remoteNames = remote.map { it.name }.toSet()
         for (l in local) {
             if (l.isSynced && !l.isDeleted && l.name !in remoteNames) {
-                resortDao.hardDeleteCenter(l)
-                Log.d(TAG, "Deleted center locally (removed from cloud): ${l.name}")
+                try {
+                    resortDao.hardDeleteCenter(l)
+                    Log.d(TAG, "Deleted center locally (removed from cloud): ${l.name}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to delete center locally: ${l.name}", e)
+                }
             }
         }
     }
@@ -222,8 +226,12 @@ class SyncRepository(
         val remoteIds = remote.map { it.id }.toSet()
         for (l in local) {
             if (l.isSynced && !l.isDeleted && l.id !in remoteIds) {
-                resortDao.hardDeleteCabin(l)
-                Log.d(TAG, "Deleted cabin locally (removed from cloud): ${l.id}")
+                try {
+                    resortDao.hardDeleteCabin(l)
+                    Log.d(TAG, "Deleted cabin locally (removed from cloud): ${l.id}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to delete cabin locally: ${l.id}", e)
+                }
             }
         }
     }
@@ -241,8 +249,12 @@ class SyncRepository(
         val remoteIds = remote.map { it.id }.toSet()
         for (l in local) {
             if (l.isSynced && !l.isDeleted && l.id !in remoteIds) {
-                resortDao.hardDeleteBooking(l)
-                Log.d(TAG, "Deleted booking locally (removed from cloud): ${l.id}")
+                try {
+                    resortDao.hardDeleteBooking(l)
+                    Log.d(TAG, "Deleted booking locally (removed from cloud): ${l.id}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to delete booking locally: ${l.id}", e)
+                }
             }
         }
     }

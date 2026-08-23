@@ -22,7 +22,8 @@ data class CenterEntity(
         ForeignKey(
             entity = CenterEntity::class,
             parentColumns = ["name"],
-            childColumns = ["centerName"]
+            childColumns = ["centerName"],
+            onDelete = ForeignKey.CASCADE
         )
     ],
     indices = [Index(value = ["centerName"])]
@@ -49,7 +50,8 @@ data class CabinEntity(
         ForeignKey(
             entity = CabinEntity::class,
             parentColumns = ["id"],
-            childColumns = ["cabinId"]
+            childColumns = ["cabinId"],
+            onDelete = ForeignKey.CASCADE
         )
     ],
     indices = [Index(value = ["cabinId"])]
@@ -215,7 +217,7 @@ abstract class ResortDao {
 
 @Database(
     entities = [CenterEntity::class, CabinEntity::class, BookingEntity::class, PendingDeletionEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

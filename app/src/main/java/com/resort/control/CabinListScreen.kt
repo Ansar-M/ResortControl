@@ -40,6 +40,8 @@ import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SyncProblem
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
@@ -66,6 +68,7 @@ import androidx.compose.ui.res.stringResource
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CabinListScreen(
     cabins: List<Cabin>,
@@ -74,6 +77,7 @@ fun CabinListScreen(
     activeCenter: String,
     windowSizeClass: WindowSizeClass,
     syncStatus: String = "IDLE",
+    onRefresh: () -> Unit = {},
     onCenterSelect: (Center) -> Unit,
     onAddCenter: (String) -> Unit,
     onEditCenter: (Center, String) -> Unit,
@@ -304,159 +308,165 @@ fun CabinListScreen(
         Scaffold(
             containerColor = Color(0xFFF8F9FA),
         ) { paddingValues ->
-            Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                if (centers.isEmpty()) {
-                    Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = null, tint = Color(0xFF1B4332))
-                        }
-                    }
-                    Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-                            Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
-                            Spacer(Modifier.height(16.dp))
-                            Text(stringResource(R.string.no_centers_title), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B4332), textAlign = TextAlign.Center)
-                            Spacer(Modifier.height(8.dp))
-                            Text(stringResource(R.string.no_centers_desc), textAlign = TextAlign.Center, color = Color.Gray)
-                            Spacer(Modifier.height(24.dp))
-                            Button(
-                                onClick = { showAddCenterDialog = true },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B4332))
-                            ) {
-                                Text(stringResource(R.string.create_new_center))
+            PullToRefreshBox(
+                isRefreshing = syncStatus == "SYNCING",
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize().padding(paddingValues)
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (centers.isEmpty()) {
+                        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = null, tint = Color(0xFF1B4332))
                             }
                         }
-                    }
-                } else {
-                    val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
-                    val columns = when (windowSizeClass.widthSizeClass) {
-                        WindowWidthSizeClass.Compact -> 1
-                        WindowWidthSizeClass.Medium -> 2
-                        else -> 3
-                    }
-
-                    if (isCompact) {
-                        // COMPACT MOBILE HEADER
-                        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                    Icon(Icons.Default.Menu, contentDescription = null, tint = Color(0xFF1B4332))
-                                }
-                                Spacer(Modifier.width(8.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(activeCenter, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B4332), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text(text = stringResource(R.string.property_count, filteredCabins.size, cabins.size), fontSize = 11.sp, color = Color.Gray, maxLines = 1)
-                                }
-                                SyncStatusIcon(syncStatus)
-                                IconButton(onClick = { showAddDialog = true }) {
-                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFF1B4332))
-                                }
-                            }
-                            Spacer(Modifier.height(8.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                BasicTextField(
-                                    value = searchQuery,
-                                    onValueChange = { searchQuery = it },
-                                    modifier = Modifier.weight(1f).height(40.dp).background(Color(0xFFF1F0EA), RoundedCornerShape(8.dp)),
-                                    singleLine = true,
-                                    decorationBox = { inner ->
-                                        Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.Search, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
-                                            Spacer(Modifier.width(8.dp))
-                                            Box(Modifier.weight(1f)) {
-                                                if (searchQuery.isEmpty()) Text(stringResource(R.string.search_placeholder), color = Color.Gray, fontSize = 13.sp)
-                                                inner()
-                                            }
-                                        }
-                                    }
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                IconButton(onClick = { showFilterDialog = true }) {
-                                    Icon(Icons.Default.FilterList, null, tint = Color(0xFF1B4332))
+                        Box(modifier = Modifier.fillMaxSize().weight(1f).verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
+                                Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.Gray.copy(alpha = 0.3f))
+                                Spacer(Modifier.height(16.dp))
+                                Text(stringResource(R.string.no_centers_title), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B4332), textAlign = TextAlign.Center)
+                                Spacer(Modifier.height(8.dp))
+                                Text(stringResource(R.string.no_centers_desc), textAlign = TextAlign.Center, color = Color.Gray)
+                                Spacer(Modifier.height(24.dp))
+                                Button(
+                                    onClick = { showAddCenterDialog = true },
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B4332))
+                                ) {
+                                    Text(stringResource(R.string.create_new_center))
                                 }
                             }
                         }
                     } else {
-                        // EXPANDED TABLET HEADER
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }, modifier = Modifier.size(44.dp)) {
-                                Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.content_desc_menu), tint = Color(0xFF1B4332))
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column(modifier = Modifier.weight(0.5f, fill = false)) {
-                                Text(text = stringResource(R.string.header_title), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B4332), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            BasicTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                modifier = Modifier.weight(1.5f).height(40.dp).background(Color(0xFFF1F0EA), RoundedCornerShape(8.dp)),
-                                singleLine = true,
-                                cursorBrush = SolidColor(Color(0xFF1E3932)),
-                                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color.Black),
-                                decorationBox = { innerTextField ->
-                                    Row(modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                                            if (searchQuery.isEmpty()) Text(stringResource(R.string.search_placeholder), color = Color.Gray, fontSize = 13.sp)
-                                            innerTextField()
-                                        }
+                        val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
+                        val columns = when (windowSizeClass.widthSizeClass) {
+                            WindowWidthSizeClass.Compact -> 1
+                            WindowWidthSizeClass.Medium -> 2
+                            else -> 3
+                        }
+
+                        if (isCompact) {
+                            // COMPACT MOBILE HEADER
+                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                        Icon(Icons.Default.Menu, contentDescription = null, tint = Color(0xFF1B4332))
+                                    }
+                                    Spacer(Modifier.width(8.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(activeCenter, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B4332), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(text = stringResource(R.string.property_count, filteredCabins.size, cabins.size), fontSize = 11.sp, color = Color.Gray, maxLines = 1)
+                                    }
+                                    SyncStatusIcon(syncStatus)
+                                    IconButton(onClick = { showAddDialog = true }) {
+                                        Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFF1B4332))
                                     }
                                 }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            OutlinedButton(
-                                onClick = { showFilterDialog = true }, modifier = Modifier.height(40.dp), shape = RoundedCornerShape(8.dp),
-                                border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF333333), containerColor = Color.White),
-                                contentPadding = PaddingValues(horizontal = 10.dp)
-                            ) {
-                                Icon(Icons.Default.FilterList, contentDescription = stringResource(R.string.filters_button), modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(stringResource(R.string.filters_button), fontSize = 12.sp)
+                                Spacer(Modifier.height(8.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    BasicTextField(
+                                        value = searchQuery,
+                                        onValueChange = { searchQuery = it },
+                                        modifier = Modifier.weight(1f).height(40.dp).background(Color(0xFFF1F0EA), RoundedCornerShape(8.dp)),
+                                        singleLine = true,
+                                        decorationBox = { inner ->
+                                            Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.Search, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                                                Spacer(Modifier.width(8.dp))
+                                                Box(Modifier.weight(1f)) {
+                                                    if (searchQuery.isEmpty()) Text(stringResource(R.string.search_placeholder), color = Color.Gray, fontSize = 13.sp)
+                                                    inner()
+                                                }
+                                            }
+                                        }
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    IconButton(onClick = { showFilterDialog = true }) {
+                                        Icon(Icons.Default.FilterList, null, tint = Color(0xFF1B4332))
+                                    }
+                                }
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Button(
-                                onClick = { showAddDialog = true }, modifier = Modifier.height(40.dp), shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B4332), contentColor = Color.White),
-                                contentPadding = PaddingValues(horizontal = 10.dp)
+                        } else {
+                            // EXPANDED TABLET HEADER
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(stringResource(R.string.add_property), fontSize = 12.sp)
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(text = stringResource(R.string.property_count, filteredCabins.size, cabins.size), fontSize = 11.sp, color = Color.Gray, maxLines = 1)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            SyncStatusIcon(syncStatus)
-                        }
-                    }
-
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(columns),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = if (isCompact) 16.dp else 32.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(if (isCompact) 16.dp else 32.dp),
-                        verticalArrangement = Arrangement.spacedBy(if (isCompact) 16.dp else 32.dp)
-                    ) {
-                        items(filteredCabins, key = { it.id }) { cabin ->
-                            Box {
-                                CabinGridCard(cabin = cabin, onClick = { onCabinClick(cabin) })
-                                Surface(
-                                    modifier = Modifier
-                                        .align(Alignment.TopStart)
-                                        .padding(8.dp)
-                                        .size(32.dp),
-                                    shape = CircleShape,
-                                    color = Color.Black.copy(alpha = 0.4f)
+                                IconButton(onClick = { scope.launch { drawerState.open() } }, modifier = Modifier.size(44.dp)) {
+                                    Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.content_desc_menu), tint = Color(0xFF1B4332))
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column(modifier = Modifier.weight(0.5f, fill = false)) {
+                                    Text(text = stringResource(R.string.header_title), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B4332), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                BasicTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    modifier = Modifier.weight(1.5f).height(40.dp).background(Color(0xFFF1F0EA), RoundedCornerShape(8.dp)),
+                                    singleLine = true,
+                                    cursorBrush = SolidColor(Color(0xFF1E3932)),
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color.Black),
+                                    decorationBox = { innerTextField ->
+                                        Row(modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                                                if (searchQuery.isEmpty()) Text(stringResource(R.string.search_placeholder), color = Color.Gray, fontSize = 13.sp)
+                                                innerTextField()
+                                            }
+                                        }
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                OutlinedButton(
+                                    onClick = { showFilterDialog = true }, modifier = Modifier.height(40.dp), shape = RoundedCornerShape(8.dp),
+                                    border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF333333), containerColor = Color.White),
+                                    contentPadding = PaddingValues(horizontal = 10.dp)
                                 ) {
-                                    IconButton(onClick = { cabinToDelete = cabin }) {
-                                        Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.FilterList, contentDescription = stringResource(R.string.filters_button), modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(stringResource(R.string.filters_button), fontSize = 12.sp)
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Button(
+                                    onClick = { showAddDialog = true }, modifier = Modifier.height(40.dp), shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B4332), contentColor = Color.White),
+                                    contentPadding = PaddingValues(horizontal = 10.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(stringResource(R.string.add_property), fontSize = 12.sp)
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(text = stringResource(R.string.property_count, filteredCabins.size, cabins.size), fontSize = 11.sp, color = Color.Gray, maxLines = 1)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                SyncStatusIcon(syncStatus)
+                            }
+                        }
+
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(columns),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = if (isCompact) 16.dp else 32.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(if (isCompact) 16.dp else 32.dp),
+                            verticalArrangement = Arrangement.spacedBy(if (isCompact) 16.dp else 32.dp)
+                        ) {
+                            items(filteredCabins, key = { it.id }) { cabin ->
+                                Box {
+                                    CabinGridCard(cabin = cabin, onClick = { onCabinClick(cabin) })
+                                    Surface(
+                                        modifier = Modifier
+                                            .align(Alignment.TopStart)
+                                            .padding(8.dp)
+                                            .size(32.dp),
+                                        shape = CircleShape,
+                                        color = Color.Black.copy(alpha = 0.4f)
+                                    ) {
+                                        IconButton(onClick = { cabinToDelete = cabin }) {
+                                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                        }
                                     }
                                 }
                             }
@@ -1051,6 +1061,3 @@ fun CabinListScreenPreview() {
         )
     }
 }
-
-
-
