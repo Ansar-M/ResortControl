@@ -314,6 +314,18 @@ class MainActivity : AppCompatActivity() {
                                             scheduleSync()
                                         }
                                     },
+                                    onUpdateBooking = { updatedBooking ->
+                                        scope.launch {
+                                            resortDao.insertBooking(
+                                                BookingEntity(
+                                                    updatedBooking.id, selectedCabin.id, updatedBooking.startDate.toEpochDay(),
+                                                    updatedBooking.endDate.toEpochDay(), updatedBooking.note, updatedBooking.color.toArgb(),
+                                                    isSynced = false
+                                                )
+                                            )
+                                            scheduleSync()
+                                        }
+                                    },
                                     onDeleteBooking = { booking ->
                                         scope.launch {
                                             resortDao.softDeleteBooking(booking.id)

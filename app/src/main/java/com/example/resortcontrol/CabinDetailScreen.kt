@@ -47,6 +47,7 @@ fun CabinDetailScreen(
     cabin: Cabin,
     windowSizeClass: WindowSizeClass,
     onAddBooking: (Booking) -> Unit = {},
+    onUpdateBooking: (Booking) -> Unit = {},
     onDeleteBooking: (Booking) -> Unit = {},
     onDeleteAllBookings: (Cabin) -> Unit = {},
     onDeletePhoto: (String) -> Unit = {},
@@ -237,6 +238,7 @@ fun CabinDetailScreen(
         BookingTimelineVisualizer(
             cabin = currentCabin,
             onAddBooking = onAddBooking,
+            onUpdateBooking = onUpdateBooking,
             onDeleteBooking = onDeleteBooking,
             onDeleteAllBookings = { onDeleteAllBookings(currentCabin) }
         )

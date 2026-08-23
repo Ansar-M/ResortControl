@@ -29,6 +29,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.TextStyle
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 fun getDayInfo(currentDate: LocalDate, bookings: List<Booking>): DayInfo {
@@ -55,6 +56,7 @@ fun getDayInfo(currentDate: LocalDate, bookings: List<Booking>): DayInfo {
 fun BookingTimelineVisualizer(
     cabin: Cabin,
     onAddBooking: (Booking) -> Unit = {},
+    onUpdateBooking: (Booking) -> Unit = {},
     onDeleteBooking: (Booking) -> Unit = {},
     onDeleteAllBookings: () -> Unit = {}
 ) {
@@ -167,12 +169,48 @@ fun BookingTimelineVisualizer(
                                         errorMessage = busyError
                                     } else {
                                         errorMessage = null
-                                        val colors = listOf(Color(0xFF42A5F5), Color(0xFFFFA726), Color(0xFF66BB6A), Color(0xFFAB47BC))
-                                        val adjacentColors = bookings.filter {
-                                            it.endDate == startDate || it.startDate == endDate
-                                        }.map { it.color }
-                                        val safeColors = colors.filter { it !in adjacentColors }
-                                        val finalColor = if (safeColors.isNotEmpty()) safeColors.random() else colors.random()
+                                        val palette = listOf(
+                                            Color(0xFF42A5F5), // Blue
+                                            Color(0xFFFFA726), // Orange
+                                            Color(0xFF66BB6A), // Green
+                                            Color(0xFFAB47BC), // Purple
+                                            Color(0xFFEC407A), // Pink
+                                            Color(0xFF26A69A), // Teal
+                                            Color(0xFF5C6BC0), // Indigo
+                                            Color(0xFF78909C), // Blue Grey
+                                            Color(0xFFFF7043), // Deep Orange
+                                            Color(0xFF8D6E63), // Brown
+                                            Color(0xFFFFCA28), // Amber
+                                            Color(0xFF26C6DA)  // Cyan
+                                        )
+
+                                        val usedColors = bookings.map { it.color }.toSet()
+                                        val unusedColors = palette.filter { it !in usedColors }
+
+                                        val finalColor = if (unusedColors.isNotEmpty()) {
+                                            unusedColors.random()
+                                        } else {
+                                            // Если все цвета палитры уже использованы, выберем тот, который не встречается
+                                            // в ближайших по времени бронированиях (в радиусе 30 дней)
+                                            val conflictingColors = bookings.filter {
+                                                val distStart = Math.abs(ChronoUnit.DAYS.between(it.endDate, startDate))
+                                                val distEnd = Math.abs(ChronoUnit.DAYS.between(it.startDate, endDate))
+                                                distStart <= 30 || distEnd <= 30
+                                            }.map { it.color }.toSet()
+
+                                            val safeColors = palette.filter { it !in conflictingColors }
+
+                                            if (safeColors.isNotEmpty()) {
+                                                safeColors.random()
+                                            } else {
+                                                // Крайний случай: просто избегаем цветов непосредственно прилегающих броней
+                                                val adjacentColors = bookings.filter {
+                                                    it.endDate == startDate || it.startDate == endDate
+                                                }.map { it.color }.toSet()
+                                                val minimalSafe = palette.filter { it !in adjacentColors }
+                                                if (minimalSafe.isNotEmpty()) minimalSafe.random() else palette.random()
+                                            }
+                                        }
 
                                         val newBooking = Booking(
                                             id = "b_${System.currentTimeMillis()}",
@@ -250,7 +288,11 @@ fun BookingTimelineVisualizer(
                                     onValueChange = { newValue ->
                                         editedNote = newValue
                                         val index = bookings.indexOfFirst { it.id == booking.id }
-                                        if (index != -1) bookings[index] = bookings[index].copy(note = newValue)
+                                        if (index != -1) {
+                                            val updated = bookings[index].copy(note = newValue)
+                                            bookings[index] = updated
+                                            onUpdateBooking(updated)
+                                        }
                                     },
                                     label = { Text(stringResource(R.string.note_label)) }, modifier = Modifier.fillMaxWidth()
                                 )
