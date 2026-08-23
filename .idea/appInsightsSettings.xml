@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.resort.control" />
+                  <option name="mobileSdkAppId" value="1:595010678626:android:8b3f72b7285cdec652063b" />
+                  <option name="projectId" value="resortcontrol-535e2b68" />
+                  <option name="projectNumber" value="595010678626" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
