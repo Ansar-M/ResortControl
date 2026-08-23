@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.resortcontrol"
+    namespace = "com.resort.control"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -14,7 +14,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.resortcontrol"
+        applicationId = "com.resort.control"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

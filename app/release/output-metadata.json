@@ -4,7 +4,7 @@
     "type": "APK",
     "kind": "Directory"
   },
-  "applicationId": "com.example.resortcontrol",
+  "applicationId": "com.resort.control",
   "variantName": "release",
   "elements": [
     {
