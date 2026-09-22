@@ -6,6 +6,13 @@ ResortControl is a professional Android application designed for recreation cent
 
 The application provides a centralized platform to manage multiple recreation centers. Administrators can track cabin availability in real-time, manage property details, and handle reservations through an intuitive calendar interface. 
 
+<img width="1423" height="889" alt="studio64_UwlPol59WV" src="https://github.com/user-attachments/assets/8020f8f8-f171-4f1c-8b21-1eb2e7d4e8c9" />
+
+<img width="1422" height="890" alt="studio64_IFQS8zrdve" src="https://github.com/user-attachments/assets/3afa8e31-9e2a-4b63-abd4-50a2a396e3f4" />
+
+<img width="1423" height="891" alt="studio64_bY5C1zZt7f" src="https://github.com/user-attachments/assets/582cd697-acc7-42c6-a4c2-7032c5404e5e" />
+
+
 ## Key Features
 
 *   **Cloud Synchronization**: Built-in Firebase integration (Firestore, Storage) with a robust "Push-before-Pull" logic to ensure data consistency across multiple devices.
