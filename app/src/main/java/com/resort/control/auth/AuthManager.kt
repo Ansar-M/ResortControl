@@ -30,6 +30,7 @@ class AuthManager(private val context: Context) {
             Log.d("AuthManager", "AuthState changed: ${firebaseUser?.email}")
             if (firebaseUser != null) {
                 _currentUser.value = UserAccount(
+                    uid = firebaseUser.uid,
                     name = firebaseUser.displayName ?: "User",
                     email = firebaseUser.email ?: "",
                     photoUrl = firebaseUser.photoUrl?.toString()
@@ -86,6 +87,7 @@ class AuthManager(private val context: Context) {
                 Log.d("AuthManager", "Firebase sign in successful: ${authResult.user?.uid}")
                 authResult.user?.let { firebaseUser ->
                     val account = UserAccount(
+                        uid = firebaseUser.uid,
                         name = firebaseUser.displayName ?: "User",
                         email = firebaseUser.email ?: "",
                         photoUrl = firebaseUser.photoUrl?.toString()

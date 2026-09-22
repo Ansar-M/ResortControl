@@ -128,10 +128,10 @@ class SyncRepository(
         }
     }
 
-    suspend fun pullFromCloud(userId: String): Boolean {
+    suspend fun pullFromCloud(userId: String): String? {
         if (userId.isEmpty()) {
             Log.e(TAG, "pullFromCloud aborted: userId is empty")
-            return false
+            return "ID пользователя пуст"
         }
         Log.d(TAG, "Starting pullFromCloud for UID: $userId")
         return try {
@@ -142,23 +142,34 @@ class SyncRepository(
             Log.d(TAG, "Fetched ${remoteCenters.size} centers (Raw size: ${centersSnapshot.size()})")
             mergeCenters(remoteCenters)
 
+            // Valid parent IDs for filtering orphaned records
+            val validCenterNames = remoteCenters.filter { !it.isDeleted }.map { it.name }.toSet()
+
             // Pull Cabins
             val cabinsSnapshot = db.collection("users").document(userId)
                 .collection("cabins").get().await()
-            val remoteCabins = cabinsSnapshot.toObjects<CabinEntity>()
-            Log.d(TAG, "Fetched ${remoteCabins.size} cabins (Raw size: ${cabinsSnapshot.size()})")
-            mergeCabins(remoteCabins)
+            val allRemoteCabins = cabinsSnapshot.toObjects<CabinEntity>()
+            
+            // Filter out cabins that belong to non-existent or deleted centers
+            val validRemoteCabins = allRemoteCabins.filter { it.centerName in validCenterNames }
+            Log.d(TAG, "Fetched ${allRemoteCabins.size} cabins, kept ${validRemoteCabins.size} valid (Raw size: ${cabinsSnapshot.size()})")
+            mergeCabins(validRemoteCabins)
+
+            val validCabinIds = validRemoteCabins.filter { !it.isDeleted }.map { it.id }.toSet()
 
             // Pull Bookings
             val bookingsSnapshot = db.collection("users").document(userId)
                 .collection("bookings").get().await()
-            val remoteBookings = bookingsSnapshot.toObjects<BookingEntity>()
-            Log.d(TAG, "Fetched ${remoteBookings.size} bookings (Raw size: ${bookingsSnapshot.size()})")
-            mergeBookings(remoteBookings)
-            true
+            val allRemoteBookings = bookingsSnapshot.toObjects<BookingEntity>()
+            
+            // Filter out bookings that belong to non-existent or deleted cabins
+            val validRemoteBookings = allRemoteBookings.filter { it.cabinId in validCabinIds }
+            Log.d(TAG, "Fetched ${allRemoteBookings.size} bookings, kept ${validRemoteBookings.size} valid (Raw size: ${bookingsSnapshot.size()})")
+            mergeBookings(validRemoteBookings)
+            null // Success
         } catch (e: Exception) {
             Log.e(TAG, "Error during pullFromCloud: ${e.message}", e)
-            false
+            e.localizedMessage ?: e.message ?: "Неизвестная ошибка сети"
         }
     }
 
@@ -224,13 +235,16 @@ class SyncRepository(
                 Log.d(TAG, "Merged cabin: ${r.id}")
             }
         }
-        // Handle remote deletions
+        // Handle remote deletions and orphans
         val remoteIds = remote.map { it.id }.toSet()
         for (l in local) {
-            if (l.isSynced && !l.isDeleted && l.id !in remoteIds) {
+            // Delete if missing from remote snapshot
+            // Note: We remove the l.isSynced check here to ensure orphaned records (whose parents were deleted) 
+            // are cleaned up regardless of their sync status.
+            if (!l.isDeleted && l.id !in remoteIds) {
                 try {
                     resortDao.hardDeleteCabin(l)
-                    Log.d(TAG, "Deleted cabin locally (removed from cloud): ${l.id}")
+                    Log.d(TAG, "Deleted cabin locally (removed from cloud or orphan): ${l.id}")
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to delete cabin locally: ${l.id}", e)
                 }
@@ -247,13 +261,14 @@ class SyncRepository(
                 Log.d(TAG, "Merged booking: ${r.id}")
             }
         }
-        // Handle remote deletions
+        // Handle remote deletions and orphans
         val remoteIds = remote.map { it.id }.toSet()
         for (l in local) {
-            if (l.isSynced && !l.isDeleted && l.id !in remoteIds) {
+            // Delete if missing from remote snapshot
+            if (!l.isDeleted && l.id !in remoteIds) {
                 try {
                     resortDao.hardDeleteBooking(l)
-                    Log.d(TAG, "Deleted booking locally (removed from cloud): ${l.id}")
+                    Log.d(TAG, "Deleted booking locally (removed from cloud or orphan): ${l.id}")
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to delete booking locally: ${l.id}", e)
                 }

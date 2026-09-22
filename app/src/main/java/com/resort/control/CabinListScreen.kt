@@ -1039,7 +1039,7 @@ fun CabinListScreenPreview() {
         )
     }
     val centers = remember { listOf(Center("Recreation Center", true)) }
-    val user = UserAccount("Admin User", "admin@resortcontrol.com")
+    val user = UserAccount("debug_id", "Admin User", "admin@resortcontrol.com")
 
     ResortControlTheme {
         val windowSizeClass = WindowSizeClass.calculateFromSize(DpSize(1200.dp, 800.dp))

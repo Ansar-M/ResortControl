@@ -79,19 +79,19 @@ class MainActivity : AppCompatActivity() {
                     }
                     
                     LaunchedEffect(user) {
-                        android.util.Log.d("MainActivity", "User state changed: ${user?.email}")
-                        user?.let {
+                        val currentUser = user
+                        android.util.Log.d("MainActivity", "User state changed: ${currentUser?.email}")
+                        if (currentUser != null) {
                             isInitialSyncing = true
-                            // Trigger immediate pull from cloud when user is detected
                             scope.launch {
                                 try {
-                                    val result = syncRepository.pullFromCloud(Firebase.auth.currentUser?.uid ?: "")
-                                    if (!result) {
-                                        android.widget.Toast.makeText(applicationContext, "Ошибка загрузки данных из облака", android.widget.Toast.LENGTH_LONG).show()
+                                    val error = syncRepository.pullFromCloud(currentUser.uid)
+                                    if (error != null) {
+                                        android.widget.Toast.makeText(applicationContext, "Сбой загрузки: $error", android.widget.Toast.LENGTH_LONG).show()
                                     }
                                 } catch (e: Exception) {
                                     android.util.Log.e("MainActivity", "Initial pull failed", e)
-                                    android.widget.Toast.makeText(applicationContext, "Сбой синхронизации: ${e.localizedMessage}", android.widget.Toast.LENGTH_LONG).show()
+                                    android.widget.Toast.makeText(applicationContext, "Критическая ошибка: ${e.localizedMessage}", android.widget.Toast.LENGTH_LONG).show()
                                 } finally {
                                     isInitialSyncing = false
                                 }
