@@ -105,7 +105,7 @@ abstract class ResortDao {
     @Query("SELECT * FROM centers WHERE isSynced = 0")
     abstract suspend fun getUnsyncedCenters(): List<CenterEntity>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     abstract suspend fun insertCenter(center: CenterEntity): Long
 
     @Query("DELETE FROM centers WHERE name = :name")
@@ -138,7 +138,7 @@ abstract class ResortDao {
     @Query("SELECT * FROM cabins WHERE isSynced = 0")
     abstract suspend fun getUnsyncedCabins(): List<CabinEntity>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     abstract suspend fun insertCabin(cabin: CabinEntity): Long
 
     @Query("SELECT * FROM bookings WHERE isDeleted = 0 ORDER BY startDate ASC")
@@ -153,7 +153,7 @@ abstract class ResortDao {
     @Query("SELECT * FROM bookings WHERE isSynced = 0")
     abstract suspend fun getUnsyncedBookings(): List<BookingEntity>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     abstract suspend fun insertBooking(booking: BookingEntity): Long
 
     @Query("UPDATE bookings SET isDeleted = 1, isSynced = 0, lastModified = :time WHERE id = :bookingId")

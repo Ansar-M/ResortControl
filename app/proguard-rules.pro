@@ -7,4 +7,8 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# Add any custom rules here.
+# Keep all model and entity classes in com.resort.control for Firebase Firestore deserialization and Room
+-keep class com.resort.control.** { *; }
+-keepclassmembers class com.resort.control.** {
+    <init>();
+}

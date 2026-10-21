@@ -367,6 +367,13 @@ class MainActivity : AppCompatActivity() {
                                             )
                                             scheduleSync()
                                         }
+                                    },
+                                    onDeleteCabin = { cabinToDelete ->
+                                        scope.launch {
+                                            resortDao.softDeleteCabin(cabinToDelete.id)
+                                            selectedCabinId = null
+                                            scheduleSync()
+                                        }
                                     }
                                 )
                             }

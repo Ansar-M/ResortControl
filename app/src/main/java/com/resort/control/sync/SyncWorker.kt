@@ -45,14 +45,6 @@ class SyncWorker(
                         } else {
                             updatedPhotos.add(photo) 
                         }
-                    } else if (photo.startsWith("http")) { // Remote URL - DOWNLOAD if missing
-                        val localPath = storageRepository.downloadImage(photo, photosDir)
-                        if (localPath != null && localPath != photo) {
-                            updatedPhotos.add(localPath)
-                            changed = true
-                        } else {
-                            updatedPhotos.add(photo)
-                        }
                     } else {
                         updatedPhotos.add(photo)
                     }
@@ -60,14 +52,6 @@ class SyncWorker(
                 
                 if (changed) {
                     resortDao.insertCabin(cabin.copy(photos = updatedPhotos, isSynced = false))
-                    // Will be pushed to Firestore with local paths replaced by cloud URLs eventually,
-                    // but here we just updated local Room to use local paths for speed.
-                    // Wait, if we replace cloud URL with local path in Room, it's fine.
-                    // But we should ensure Firestore always has the cloud URL.
-                    // Actually, SyncRepository.pushCabins will push whatever is in Room.
-                    // If Room has local path, Firestore will get local path (BAD).
-                    // So: Room should probably store BOTH or we need a Mapper that handles this.
-                    // Alternative: Room stores Cloud URL, and we have a local cache check.
                 }
             }
             

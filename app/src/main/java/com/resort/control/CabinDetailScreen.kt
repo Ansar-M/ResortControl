@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
@@ -51,15 +52,23 @@ fun CabinDetailScreen(
     onDeleteBooking: (Booking) -> Unit = {},
     onDeleteAllBookings: (Cabin) -> Unit = {},
     onDeletePhoto: (String) -> Unit = {},
-    onUpdateCabin: (Cabin) -> Unit = {}
+    onUpdateCabin: (Cabin) -> Unit = {},
+    onDeleteCabin: (Cabin) -> Unit = {}
 ) {
     var currentCabin by remember { mutableStateOf(cabin) }
     val photos = remember { mutableStateListOf(*currentCabin.photos.toTypedArray()) }
+
+    LaunchedEffect(cabin) {
+        currentCabin = cabin
+        photos.clear()
+        photos.addAll(cabin.photos)
+    }
     var selectedPhotoForView by remember { mutableStateOf<String?>(null) }
 
     var showEditFeaturesDialog by remember { mutableStateOf(false) }
     var showEditNameDialog by remember { mutableStateOf(false) }
     var showEditPriceDialog by remember { mutableStateOf(false) } // НОВОЕ: Состояние для окна изменения цены
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -90,8 +99,13 @@ fun CabinDetailScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(text = "${stringResource(R.string.cabin_prefix)} ${currentCabin.number}", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                IconButton(onClick = { showEditNameDialog = true }) {
-                    Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_name_desc), tint = Color.Gray)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { showEditNameDialog = true }) {
+                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_name_desc), tint = Color.Gray)
+                    }
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_button), tint = Color.Red.copy(alpha = 0.7f))
+                    }
                 }
             }
 
@@ -357,6 +371,23 @@ fun CabinDetailScreen(
                 }) { Text(stringResource(R.string.save_button)) }
             },
             dismissButton = { TextButton(onClick = { showEditFeaturesDialog = false }) { Text(stringResource(R.string.cancel_button)) } }
+        )
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text(stringResource(R.string.delete_cabin_title_dialog)) },
+            text = { Text(stringResource(R.string.delete_cabin_confirm, currentCabin.number)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    onDeleteCabin(currentCabin)
+                }) { Text(stringResource(R.string.delete_button), color = Color.Red) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.cancel_button)) }
+            }
         )
     }
 

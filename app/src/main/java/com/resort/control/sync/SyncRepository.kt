@@ -239,9 +239,7 @@ class SyncRepository(
         val remoteIds = remote.map { it.id }.toSet()
         for (l in local) {
             // Delete if missing from remote snapshot
-            // Note: We remove the l.isSynced check here to ensure orphaned records (whose parents were deleted) 
-            // are cleaned up regardless of their sync status.
-            if (!l.isDeleted && l.id !in remoteIds) {
+            if (l.isSynced && !l.isDeleted && l.id !in remoteIds) {
                 try {
                     resortDao.hardDeleteCabin(l)
                     Log.d(TAG, "Deleted cabin locally (removed from cloud or orphan): ${l.id}")
@@ -265,7 +263,7 @@ class SyncRepository(
         val remoteIds = remote.map { it.id }.toSet()
         for (l in local) {
             // Delete if missing from remote snapshot
-            if (!l.isDeleted && l.id !in remoteIds) {
+            if (l.isSynced && !l.isDeleted && l.id !in remoteIds) {
                 try {
                     resortDao.hardDeleteBooking(l)
                     Log.d(TAG, "Deleted booking locally (removed from cloud or orphan): ${l.id}")
